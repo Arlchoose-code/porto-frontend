@@ -233,6 +233,8 @@ export default function AboutClient({ settings: settingsProp, profile, skills, e
     const { settings: settingsCtx } = useSettings();
     const settings = Object.keys(settingsCtx).length > 0 ? settingsCtx : settingsProp;
     const [coursePage, setCoursePage] = useState(1);
+    const [expPage, setExpPage] = useState(1);
+    const EXP_PER_PAGE = 5;
     const [isMobile, setIsMobile] = useState(false);
     useEffect(() => {
         const check = () => setIsMobile(window.innerWidth < 640);
@@ -259,6 +261,32 @@ export default function AboutClient({ settings: settingsProp, profile, skills, e
         const bDate = b.start_date ? new Date(b.start_date).getTime() : 0;
         return bDate - aDate;
     });
+
+    const expSectionRef = useRef<HTMLElement>(null);
+    const totalExpPages = Math.ceil(sortedExperiences.length / EXP_PER_PAGE);
+    const paginatedExperiences = sortedExperiences.slice((expPage - 1) * EXP_PER_PAGE, expPage * EXP_PER_PAGE);
+
+    const goToExpPage = (page: number) => {
+        setExpPage(page);
+        setTimeout(() => {
+            expSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 50);
+    };
+
+    // Smart pagination: 1 2 ... 5 6 7 ... 10
+    const getSmartPages = (current: number, total: number): (number | string)[] => {
+        if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+        const pages: (number | string)[] = [];
+        const showAround = 1;
+        for (let i = 1; i <= total; i++) {
+            if (i === 1 || i === total || (i >= current - showAround && i <= current + showAround)) {
+                pages.push(i);
+            } else if (i === current - showAround - 1 || i === current + showAround + 1) {
+                pages.push("...");
+            }
+        }
+        return pages;
+    };
 
     const skillsByCategory = skills.reduce((acc, skill) => {
         const cat = skill.category || "other";
@@ -342,13 +370,13 @@ export default function AboutClient({ settings: settingsProp, profile, skills, e
             )}
 
             {(settings.show_experiences === undefined || settings.show_experiences === null || settings.show_experiences === "" || settings.show_experiences === "true") && (
-            <section className="bg-background">
+            <section ref={expSectionRef} className="bg-background">
                 <div className="max-w-6xl mx-auto px-8 sm:px-16 py-20">
                     <FadeUp><SectionTitle label="Career" title="Work Experience" /></FadeUp>
                     <div className="relative">
                         <div className="absolute left-5 top-0 bottom-0 w-px bg-border hidden sm:block" />
                         <div className="flex flex-col gap-12">
-                            {sortedExperiences.map((exp, i) => (
+                            {paginatedExperiences.map((exp, i) => (
                                 <FadeUp key={exp.id} delay={i * 0.08}>
                                     <div className="sm:pl-16 relative">
                                         <div className="absolute left-0 top-1 w-10 h-10 rounded-full border-2 border-border bg-background hidden sm:flex items-center justify-center">
@@ -379,6 +407,30 @@ export default function AboutClient({ settings: settingsProp, profile, skills, e
                             {experiences.length === 0 && <p className="text-sm text-muted-foreground">No experience listed yet.</p>}
                         </div>
                     </div>
+                    {totalExpPages > 1 && (
+                        <div className="flex items-center justify-center gap-2 mt-10">
+                            <button
+                                onClick={() => goToExpPage(Math.max(1, expPage - 1))}
+                                disabled={expPage === 1}
+                                className="w-9 h-9 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            {getSmartPages(expPage, totalExpPages).map((p, i) => (
+                                typeof p === "string"
+                                    ? <span key={`dots-${i}`} className="w-9 h-9 flex items-center justify-center text-sm text-muted-foreground">...</span>
+                                    : <button key={p} onClick={() => goToExpPage(p)}
+                                        className={`w-9 h-9 rounded-full text-sm font-medium transition-colors ${expPage === p ? "bg-foreground text-background" : "border border-border hover:bg-muted"}`}>
+                                        {p}
+                                    </button>
+                            ))}
+                            <button
+                                onClick={() => goToExpPage(Math.min(totalExpPages, expPage + 1))}
+                                disabled={expPage === totalExpPages}
+                                className="w-9 h-9 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    )}
                 </div>
             </section>
             )}
@@ -406,11 +458,13 @@ export default function AboutClient({ settings: settingsProp, profile, skills, e
                                 className="w-9 h-9 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
                                 <ChevronLeft className="w-4 h-4" />
                             </button>
-                            {Array.from({ length: totalCoursePages }, (_, i) => (
-                                <button key={i} onClick={() => goToCoursePage(i + 1)}
-                                    className={`w-9 h-9 rounded-full text-sm font-medium transition-colors ${coursePage === i + 1 ? "bg-foreground text-background" : "border border-border hover:bg-muted"}`}>
-                                    {i + 1}
-                                </button>
+                            {Array.from({ length: totalCoursePages }, (_, i) => i + 1).length > 0 && getSmartPages(coursePage, totalCoursePages).map((p, i) => (
+                                typeof p === "string"
+                                    ? <span key={`dots-${i}`} className="w-9 h-9 flex items-center justify-center text-sm text-muted-foreground">...</span>
+                                    : <button key={p} onClick={() => goToCoursePage(p)}
+                                        className={`w-9 h-9 rounded-full text-sm font-medium transition-colors ${coursePage === p ? "bg-foreground text-background" : "border border-border hover:bg-muted"}`}>
+                                        {p}
+                                    </button>
                             ))}
                             <button
                                 onClick={() => goToCoursePage(Math.min(totalCoursePages, coursePage + 1))}

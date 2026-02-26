@@ -53,11 +53,13 @@ export default function EducationFormModal({ open, onClose, onSuccess, education
         }
     }, [education, open]);
 
-    const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            setLogoFile(file);
-            setLogoPreview(URL.createObjectURL(file));
+            const { compressImage } = await import("@/lib/compress-image");
+            const compressed = await compressImage(file);
+            setLogoFile(compressed);
+            setLogoPreview(URL.createObjectURL(compressed));
         }
         e.target.value = "";
     };

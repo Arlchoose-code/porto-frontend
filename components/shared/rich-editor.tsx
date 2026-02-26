@@ -135,8 +135,10 @@ export default function RichEditor({ value, onChange, placeholder }: Props) {
 
         setUploading(true);
         try {
+            const { compressImage } = await import("@/lib/compress-image");
+            const compressed = await compressImage(file);
             const formData = new FormData();
-            formData.append("file", file);
+            formData.append("file", compressed);
             const res = await api.post("/upload?folder=blogs", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
@@ -144,7 +146,6 @@ export default function RichEditor({ value, onChange, placeholder }: Props) {
             if (imageUrl) {
                 const base = process.env.NEXT_PUBLIC_APP_URL || "";
                 const fullUrl = imageUrl.startsWith("http") ? imageUrl : `${base}${imageUrl}`;
-                // Tampilkan dialog pilih ukuran
                 setSizeDialog({ src: fullUrl, alt: file.name.replace(/\.[^/.]+$/, "") });
             }
         } catch {

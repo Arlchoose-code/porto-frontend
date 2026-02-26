@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import {
     Plus, Search, Eye, Pencil, Trash2,
     FolderOpen, Loader2, Link, Layers,
-    Monitor, Image as ImageIcon
+    Monitor, Image as ImageIcon, ChevronLeft, ChevronRight
 } from "lucide-react";
 import ProjectFormModal from "./components/project-form-modal";
 import ProjectViewModal from "./components/project-view-modal";
@@ -95,7 +95,21 @@ export default function ProjectsPage() {
                 p.tech_stacks?.some((t) => t.name.toLowerCase().includes(q))
             ));
         }
+        setProjectPage(1);
     }, [search, projects]);
+
+    // Client-side pagination
+    const PROJECTS_PER_PAGE = 10;
+    const [projectPage, setProjectPage] = useState(1);
+    const projectTotalPages = Math.ceil(filtered.length / PROJECTS_PER_PAGE);
+    const paginatedProjects = filtered.slice((projectPage - 1) * PROJECTS_PER_PAGE, projectPage * PROJECTS_PER_PAGE);
+
+    const getProjectPaginationItems = (current: number, total: number): (number | "...")[] => {
+        if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+        if (current <= 4) return [1, 2, 3, 4, 5, "...", total];
+        if (current >= total - 3) return [1, "...", total - 4, total - 3, total - 2, total - 1, total];
+        return [1, "...", current - 1, current, current + 1, "...", total];
+    };
 
     const handleDelete = async () => {
         if (!selectedProject) return;
@@ -214,7 +228,7 @@ export default function ProjectsPage() {
                 ) : (
                     <motion.div key="list" variants={containerVariants} initial="hidden" animate="show" className="space-y-2">
                         <AnimatePresence>
-                            {filtered.map((project) => (
+                            {paginatedProjects.map((project) => (
                                 <motion.div key={project.id} variants={itemVariants} exit="exit" layout
                                     whileHover={{ y: -1, transition: { duration: 0.15 } }}
                                     className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-3.5 transition-all duration-200 group hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm">
@@ -304,6 +318,38 @@ export default function ProjectsPage() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Pagination */}
+            {projectTotalPages > 1 && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+                    className="flex items-center justify-center gap-1 pt-2">
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.9 }}>
+                        <Button variant="outline" size="sm" onClick={() => setProjectPage(p => Math.max(1, p - 1))}
+                            disabled={projectPage === 1} className="h-8 w-8 p-0 border-gray-200 dark:border-gray-700">
+                            <ChevronLeft className="w-4 h-4" />
+                        </Button>
+                    </motion.div>
+                    {getProjectPaginationItems(projectPage, projectTotalPages).map((p, i) => (
+                        p === "..." ? (
+                            <span key={`dots-${i}`} className="px-1 text-gray-400 text-sm">···</span>
+                        ) : (
+                            <motion.div key={p} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.9 }}>
+                                <Button variant={projectPage === p ? "default" : "outline"} size="sm"
+                                    onClick={() => setProjectPage(Number(p))}
+                                    className={`h-8 w-8 p-0 text-sm ${projectPage === p ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600" : "border-gray-200 dark:border-gray-700"}`}>
+                                    {p}
+                                </Button>
+                            </motion.div>
+                        )
+                    ))}
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.9 }}>
+                        <Button variant="outline" size="sm" onClick={() => setProjectPage(p => Math.min(projectTotalPages, p + 1))}
+                            disabled={projectPage === projectTotalPages} className="h-8 w-8 p-0 border-gray-200 dark:border-gray-700">
+                            <ChevronRight className="w-4 h-4" />
+                        </Button>
+                    </motion.div>
+                </motion.div>
+            )}
 
             {/* Modals */}
             <ProjectFormModal open={formModal} onClose={() => { setFormModal(false); setSelectedProject(null); }}

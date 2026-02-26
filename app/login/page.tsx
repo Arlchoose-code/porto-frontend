@@ -24,9 +24,10 @@ export default function LoginPage() {
 
         try {
             const res = await api.post("/login", form);
-            const { token } = res.data.data;
+            const { token, refresh_token } = res.data.data;
 
             localStorage.setItem("token", token);
+            localStorage.setItem("refresh_token", refresh_token);
 
             toast.success("Login berhasil!");
             router.push("/dashboard");

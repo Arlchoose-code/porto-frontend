@@ -126,6 +126,19 @@ export default function ContactsPage() {
         );
     });
 
+    // Client-side pagination
+    const CONTACTS_PER_PAGE = 10;
+    const [contactPage, setContactPage] = useState(1);
+    const contactTotalPages = Math.ceil(filtered.length / CONTACTS_PER_PAGE);
+    const paginatedContacts = filtered.slice((contactPage - 1) * CONTACTS_PER_PAGE, contactPage * CONTACTS_PER_PAGE);
+
+    const getContactPaginationItems = (current: number, total: number): (number | "...")[] => {
+        if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+        if (current <= 4) return [1, 2, 3, 4, 5, "...", total];
+        if (current >= total - 3) return [1, "...", total - 4, total - 3, total - 2, total - 1, total];
+        return [1, "...", current - 1, current, current + 1, "...", total];
+    };
+
     const handleUpdateStatus = async (contact: Contact, status: "pending" | "read" | "done") => {
         setUpdatingId(contact.id);
         try {
@@ -217,7 +230,7 @@ export default function ContactsPage() {
                     <motion.button key={stat.label}
                         initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: i * 0.04 }}
-                        onClick={() => setActiveStatus(stat.filter)}
+                        onClick={() => { setActiveStatus(stat.filter); setContactPage(1); }}
                         className={`bg-white dark:bg-gray-900 border rounded-xl p-3 text-center transition-all cursor-pointer hover:shadow-sm ${
                             activeStatus === stat.filter
                                 ? "border-violet-400 dark:border-violet-600 ring-1 ring-violet-400/30"
@@ -234,7 +247,7 @@ export default function ContactsPage() {
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                     <Input placeholder="Cari email, subject, pesan..."
-                        value={search} onChange={(e) => setSearch(e.target.value)}
+                        value={search} onChange={(e) => { setSearch(e.target.value); setContactPage(1); }}
                         className="pl-9 h-9 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-sm" />
                 </div>
             </motion.div>
@@ -265,7 +278,7 @@ export default function ContactsPage() {
                 ) : (
                     <motion.div key="list" variants={containerVariants} initial="hidden" animate="show" className="space-y-2">
                         <AnimatePresence>
-                            {filtered.map((contact) => {
+                            {paginatedContacts.map((contact) => {
                                 const cfg = STATUS_CONFIG[contact.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.pending;
                                 const StatusIcon = cfg.icon;
                                 const isPending = contact.status === "pending";
@@ -365,7 +378,37 @@ export default function ContactsPage() {
                 )}
             </AnimatePresence>
 
-            {/* View Modal */}
+            {/* Pagination */}
+            {contactTotalPages > 1 && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+                    className="flex items-center justify-center gap-1 pt-2">
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.9 }}>
+                        <Button variant="outline" size="sm" onClick={() => setContactPage(p => Math.max(1, p - 1))}
+                            disabled={contactPage === 1} className="h-8 w-8 p-0 border-gray-200 dark:border-gray-700">
+                            <ChevronLeft className="w-4 h-4" />
+                        </Button>
+                    </motion.div>
+                    {getContactPaginationItems(contactPage, contactTotalPages).map((p, i) => (
+                        p === "..." ? (
+                            <span key={`dots-${i}`} className="px-1 text-gray-400 text-sm">···</span>
+                        ) : (
+                            <motion.div key={p} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.9 }}>
+                                <Button variant={contactPage === p ? "default" : "outline"} size="sm"
+                                    onClick={() => setContactPage(Number(p))}
+                                    className={`h-8 w-8 p-0 text-sm ${contactPage === p ? "bg-violet-600 hover:bg-violet-700 text-white border-violet-600" : "border-gray-200 dark:border-gray-700"}`}>
+                                    {p}
+                                </Button>
+                            </motion.div>
+                        )
+                    ))}
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.9 }}>
+                        <Button variant="outline" size="sm" onClick={() => setContactPage(p => Math.min(contactTotalPages, p + 1))}
+                            disabled={contactPage === contactTotalPages} className="h-8 w-8 p-0 border-gray-200 dark:border-gray-700">
+                            <ChevronRight className="w-4 h-4" />
+                        </Button>
+                    </motion.div>
+                </motion.div>
+            )}
             <AnimatePresence>
                 {viewModal && selectedContact && (
                     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">

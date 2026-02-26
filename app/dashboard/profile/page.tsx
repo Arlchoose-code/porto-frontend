@@ -47,12 +47,14 @@ export default function ProfilePage() {
         setProfile((prev) => ({ ...prev, [field]: value }));
     };
 
-    const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        setAvatarFile(file);
-        setAvatarPreview(URL.createObjectURL(file));
         e.target.value = "";
+        const { compressImage } = await import("@/lib/compress-image");
+        const compressed = await compressImage(file);
+        setAvatarFile(compressed);
+        setAvatarPreview(URL.createObjectURL(compressed));
     };
 
     const handleResumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {

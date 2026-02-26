@@ -174,13 +174,15 @@ export default function ToolsPage() {
         setFormErrors({});
     };
 
-    const handleIconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleIconChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        const { compressImage } = await import("@/lib/compress-image");
+        const compressed = await compressImage(file);
         setForm(prev => ({
             ...prev,
-            icon: file,
-            iconPreview: URL.createObjectURL(file),
+            icon: compressed,
+            iconPreview: URL.createObjectURL(compressed),
         }));
     };
 

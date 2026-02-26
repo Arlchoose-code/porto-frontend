@@ -57,11 +57,13 @@ export default function ExperienceFormModal({ open, onClose, onSuccess, experien
         }
     }, [experience, open]);
 
-    const handleImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImagesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
-        setImageFiles((prev) => [...prev, ...files]);
-        setImagePreviews((prev) => [...prev, ...files.map((f) => URL.createObjectURL(f))]);
         e.target.value = "";
+        const { compressImage } = await import("@/lib/compress-image");
+        const compressed = await Promise.all(files.map((f) => compressImage(f)));
+        setImageFiles((prev) => [...prev, ...compressed]);
+        setImagePreviews((prev) => [...prev, ...compressed.map((f) => URL.createObjectURL(f))]);
     };
 
     const removeNewImage = (i: number) => {

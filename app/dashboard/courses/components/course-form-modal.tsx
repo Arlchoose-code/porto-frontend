@@ -53,11 +53,13 @@ export default function CourseFormModal({ open, onClose, onSuccess, course }: Pr
         }
     }, [course, open]);
 
-    const handleCertChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleCertChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            setCertFile(file);
-            setCertPreview(URL.createObjectURL(file));
+            const { compressImage } = await import("@/lib/compress-image");
+            const compressed = await compressImage(file);
+            setCertFile(compressed);
+            setCertPreview(URL.createObjectURL(compressed));
         }
         e.target.value = "";
     };

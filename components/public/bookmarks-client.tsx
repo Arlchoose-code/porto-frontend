@@ -115,6 +115,8 @@ export default function BookmarksClient({ bookmarks: initialBookmarks, meta: ini
     const [loading, setLoading] = useState(false);
     const [searchValue, setSearchValue] = useState(initialSearch);
     const [topicSearch, setTopicSearch] = useState("");
+    const [showAllTopics, setShowAllTopics] = useState(false);
+    const TOPICS_INITIAL = 15;
 
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const sectionRef = useRef<HTMLElement>(null);
@@ -174,6 +176,10 @@ export default function BookmarksClient({ bookmarks: initialBookmarks, meta: ini
     const filteredTopics = topicSearch.trim()
         ? topics.filter(t => t.toLowerCase().includes(topicSearch.toLowerCase()))
         : topics;
+
+    const displayedTopics = topicSearch.trim()
+        ? filteredTopics
+        : (showAllTopics ? filteredTopics : filteredTopics.slice(0, TOPICS_INITIAL));
 
     const paginationItems = getPaginationItems(currentPage, displayMeta.total_pages);
 
@@ -250,7 +256,7 @@ export default function BookmarksClient({ bookmarks: initialBookmarks, meta: ini
                                 </button>
 
                                 <AnimatePresence mode="popLayout">
-                                    {filteredTopics.map(topic => (
+                                    {displayedTopics.map(topic => (
                                         <motion.button
                                             key={topic}
                                             layout
@@ -271,6 +277,14 @@ export default function BookmarksClient({ bookmarks: initialBookmarks, meta: ini
 
                                 {topicSearch && filteredTopics.length === 0 && (
                                     <span className="text-xs text-muted-foreground py-1.5">No topics match &quot;{topicSearch}&quot;</span>
+                                )}
+
+                                {!topicSearch && filteredTopics.length > TOPICS_INITIAL && (
+                                    <button
+                                        onClick={() => setShowAllTopics(prev => !prev)}
+                                        className="inline-flex items-center gap-1.5 text-xs font-medium px-3.5 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground transition-colors">
+                                        {showAllTopics ? "− Less" : `+ More (${filteredTopics.length - TOPICS_INITIAL})`}
+                                    </button>
                                 )}
                             </div>
 

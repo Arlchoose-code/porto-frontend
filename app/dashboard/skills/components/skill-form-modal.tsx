@@ -57,11 +57,13 @@ export default function SkillFormModal({ open, onClose, onSuccess, skill }: Prop
         }
     }, [skill, open]);
 
-    const handleIconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleIconChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            setIconFile(file);
-            setIconPreview(URL.createObjectURL(file));
+            const { compressImage } = await import("@/lib/compress-image");
+            const compressed = await compressImage(file);
+            setIconFile(compressed);
+            setIconPreview(URL.createObjectURL(compressed));
         }
         e.target.value = "";
     };

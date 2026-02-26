@@ -12,8 +12,9 @@ import { toast } from "sonner";
 import {
     Settings2, Loader2, Save, Globe, Search,
     BarChart2, Eye, EyeOff, Mail, AlertTriangle,
-    Twitter, Image, FileText
+    Twitter, Image, FileText, Upload, X
 } from "lucide-react";
+import { useRef } from "react";
 import { useSettings } from "@/components/shared/settings-provider";
 
 export default function SettingsPage() {
@@ -21,6 +22,28 @@ export default function SettingsPage() {
     const [settings, setSettings] = useState<Settings>({});
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+
+    const uploadImage = async (file: File, key: keyof Settings) => {
+        setUploadingKey(key);
+        try {
+            const { compressImage } = await import("@/lib/compress-image");
+            const compressed = await compressImage(file);
+            const formData = new FormData();
+            formData.append("file", compressed);
+            formData.append("folder", "settings");
+            const res = await api.post("/upload", formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+            const url = res.data.data?.url || res.data.url;
+            if (url) set(key, url);
+            toast.success("Gambar berhasil diupload!");
+        } catch {
+            toast.error("Gagal upload gambar");
+        } finally {
+            setUploadingKey(null);
+        }
+    };
 
     useEffect(() => {
         const fetch = async () => {
@@ -131,6 +154,12 @@ export default function SettingsPage() {
                                 value={settings.site_title || ""} onChange={(e) => set("site_title", e.target.value)} />
                         </div>
                         <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Site Name <span className="text-gray-400">(dipakai di navbar)</span></Label>
+                            <Input placeholder="Arlchoose"
+                                className="h-9 text-sm bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                                value={settings.site_name || ""} onChange={(e) => set("site_name", e.target.value)} />
+                        </div>
+                        <div className="space-y-1.5">
                             <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Site Author</Label>
                             <Input placeholder="John Doe"
                                 className="h-9 text-sm bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
@@ -161,10 +190,20 @@ export default function SettingsPage() {
                                 value={settings.site_keywords || ""} onChange={(e) => set("site_keywords", e.target.value)} />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Logo URL</Label>
-                            <Input placeholder="https://example.com/logo.png"
-                                className="h-9 text-sm bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                                value={settings.logo_url || ""} onChange={(e) => set("logo_url", e.target.value)} />
+                            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Logo</Label>
+                            <div className="flex items-center gap-2">
+                                {settings.logo_url && (
+                                    <div className="relative w-9 h-9 rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden shrink-0">
+                                        <img src={settings.logo_url} alt="logo" className="w-full h-full object-contain" />
+                                        <button type="button" onClick={() => set("logo_url", "")} className="absolute top-0 right-0 bg-red-500 text-white rounded-bl p-0.5"><X className="w-2.5 h-2.5" /></button>
+                                    </div>
+                                )}
+                                <label className="flex-1 flex items-center gap-2 px-3 h-9 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 cursor-pointer hover:border-blue-400 transition-colors text-xs text-gray-400">
+                                    {uploadingKey === "logo_url" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                                    {uploadingKey === "logo_url" ? "Uploading..." : (settings.logo_url ? "Ganti logo" : "Upload logo")}
+                                    <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f, "logo_url"); }} />
+                                </label>
+                            </div>
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Theme Color</Label>
@@ -223,12 +262,19 @@ export default function SettingsPage() {
                                 value={settings.og_locale || ""} onChange={(e) => set("og_locale", e.target.value)} />
                         </div>
                         <div className="sm:col-span-2 space-y-1.5">
-                            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">OG Image URL</Label>
-                            <div className="relative">
-                                <Image className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                                <Input placeholder="https://example.com/og-image.png"
-                                    className="pl-8 h-9 text-sm bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                                    value={settings.og_image || ""} onChange={(e) => set("og_image", e.target.value)} />
+                            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">OG Image</Label>
+                            <div className="flex items-center gap-2">
+                                {settings.og_image && (
+                                    <div className="relative w-16 h-9 rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden shrink-0">
+                                        <img src={settings.og_image} alt="og" className="w-full h-full object-cover" />
+                                        <button type="button" onClick={() => set("og_image", "")} className="absolute top-0 right-0 bg-red-500 text-white rounded-bl p-0.5"><X className="w-2.5 h-2.5" /></button>
+                                    </div>
+                                )}
+                                <label className="flex-1 flex items-center gap-2 px-3 h-9 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 cursor-pointer hover:border-violet-400 transition-colors text-xs text-gray-400">
+                                    {uploadingKey === "og_image" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                                    {uploadingKey === "og_image" ? "Uploading..." : (settings.og_image ? "Ganti OG image" : "Upload OG image")}
+                                    <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f, "og_image"); }} />
+                                </label>
                             </div>
                         </div>
                         <div className="space-y-1.5">
@@ -241,10 +287,20 @@ export default function SettingsPage() {
                             </div>
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Favicon URL</Label>
-                            <Input placeholder="https://example.com/favicon.ico"
-                                className="h-9 text-sm bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                                value={settings.favicon_url || ""} onChange={(e) => set("favicon_url", e.target.value)} />
+                            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Favicon</Label>
+                            <div className="flex items-center gap-2">
+                                {settings.favicon_url && (
+                                    <div className="relative w-9 h-9 rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden shrink-0">
+                                        <img src={settings.favicon_url} alt="favicon" className="w-full h-full object-contain" />
+                                        <button type="button" onClick={() => set("favicon_url", "")} className="absolute top-0 right-0 bg-red-500 text-white rounded-bl p-0.5"><X className="w-2.5 h-2.5" /></button>
+                                    </div>
+                                )}
+                                <label className="flex-1 flex items-center gap-2 px-3 h-9 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 cursor-pointer hover:border-violet-400 transition-colors text-xs text-gray-400">
+                                    {uploadingKey === "favicon_url" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                                    {uploadingKey === "favicon_url" ? "Uploading..." : (settings.favicon_url ? "Ganti favicon" : "Upload favicon")}
+                                    <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f, "favicon_url"); }} />
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </motion.div>

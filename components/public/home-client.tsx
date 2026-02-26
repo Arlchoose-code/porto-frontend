@@ -81,38 +81,49 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
                     }}
                 />
 
-                {/* DEFAULT: judul + desc — naik saat hover */}
-                <div className={`absolute bottom-0 left-0 right-0 px-4 pb-4 transition-transform duration-300 ease-out z-10 ${touched ? "-translate-y-14" : "translate-y-0 group-hover:-translate-y-14"}`}>
-                    <h3 className="text-base font-bold leading-snug line-clamp-1 text-foreground">{project.title}</h3>
+                {/* Blur layer — static, selalu di bottom, ga bergerak */}
+                <div className="absolute bottom-0 left-0 right-0 h-56 z-10 pointer-events-none"
+                    style={{
+                        background: "linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.45) 100%)",
+                    }}
+                />
+                <div className="absolute bottom-0 left-0 right-0 h-56 z-10 pointer-events-none backdrop-blur-sm group-hover:backdrop-blur-xl transition-all duration-300"
+                    style={{ maskImage: "linear-gradient(to bottom, transparent 0%, black 50%)", WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 50%)" }} />
+
+                {/* Title + desc — naik saat hover */}
+                <div className={`absolute bottom-0 left-0 right-0 px-4 pb-4 pt-12 z-10 transition-transform duration-300 ease-out ${touched ? "-translate-y-14" : "translate-y-0 group-hover:-translate-y-14"}`}>
+                    <h3 className="text-xl font-extrabold leading-snug line-clamp-1 text-foreground">{project.title}</h3>
                     {project.description && (
-                        <p className="text-sm mt-1 line-clamp-2 leading-relaxed text-foreground/70">{project.description}</p>
+                        <p className="text-sm font-semibold mt-1 line-clamp-2 leading-relaxed text-foreground/50">{project.description}</p>
                     )}
                 </div>
 
-                {/* SLIDE UP: platform + tech + visit — dari bawah, teks hitam */}
-                <div className={`absolute bottom-0 left-0 right-0 px-4 py-3 flex items-center gap-2 transition-transform duration-300 ease-out z-10 ${touched ? "translate-y-0" : "translate-y-full group-hover:translate-y-0"}`}>
+                {/* Platform + tech + visit — slide up dari bawah */}
+                <div className={`absolute bottom-0 left-0 right-0 px-4 py-3 flex items-center gap-1.5 z-10 transition-transform duration-300 ease-out ${touched ? "translate-y-0" : "translate-y-full group-hover:translate-y-0"}`}>
                     {project.platform && (
-                        <div className="flex flex-col px-2.5 py-1.5 rounded-md bg-white/80 dark:bg-background/80 border border-black/10">
-                            <span className="text-xs font-semibold text-foreground leading-none">{project.platform}</span>
-                            <span className="text-[10px] text-muted-foreground mt-0.5">Platform</span>
+                        <div className="flex flex-col px-2 py-1.5 rounded-md bg-white/80 dark:bg-background/80 border border-black/10 min-w-0 max-w-[28%]">
+                            <span className="text-xs font-bold text-foreground leading-none truncate">{project.platform}</span>
+                            <span className="text-[10px] font-semibold text-muted-foreground mt-0.5 whitespace-nowrap">Platform</span>
                         </div>
                     )}
                     {project.tech_stacks?.slice(0, 2).map((t) => (
-                        <div key={t.id} className="flex flex-col px-2.5 py-1.5 rounded-md bg-white/80 dark:bg-background/80 border border-black/10">
-                            <span className="text-xs font-semibold text-foreground leading-none">{t.name}</span>
-                            <span className="text-[10px] text-muted-foreground mt-0.5">Tech stack</span>
+                        <div key={t.id} className="flex flex-col px-2 py-1.5 rounded-md bg-white/80 dark:bg-background/80 border border-black/10 min-w-0 max-w-[26%]">
+                            <span className="text-xs font-bold text-foreground leading-none truncate">{t.name}</span>
+                            <span className="text-[10px] font-semibold text-muted-foreground mt-0.5 whitespace-nowrap">Tech stack</span>
                         </div>
                     ))}
+                    {(project.tech_stacks?.length ?? 0) > 2 && (
+                        <div className="flex flex-col items-center px-2 py-1.5 rounded-md bg-white/80 dark:bg-background/80 border border-black/10 shrink-0">
+                            <span className="text-xs font-bold text-foreground leading-none">+{project.tech_stacks.length - 2}</span>
+                            <span className="text-[10px] font-semibold text-muted-foreground mt-0.5 whitespace-nowrap">more</span>
+                        </div>
+                    )}
                     {project.url && (
-                        <a
-                            href={project.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="relative z-20 flex flex-col items-center px-2.5 py-1.5 rounded-md bg-white/80 dark:bg-background/80 border border-black/10 hover:bg-white transition-colors"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <ExternalLink className="w-3.5 h-3.5 text-foreground" />
-                            <span className="text-[10px] text-muted-foreground mt-0.5">Visit</span>
+                        <a href={project.url} target="_blank" rel="noopener noreferrer"
+                            className="flex flex-col items-center px-2 py-1.5 rounded-md bg-white/80 dark:bg-background/80 border border-black/10 hover:bg-white transition-colors shrink-0"
+                            onClick={(e) => e.stopPropagation()}>
+                            <ExternalLink className="w-3 h-3 text-foreground" />
+                            <span className="text-[10px] font-semibold text-muted-foreground mt-0.5 whitespace-nowrap">Visit</span>
                         </a>
                     )}
                 </div>

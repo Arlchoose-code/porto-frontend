@@ -52,7 +52,7 @@ export default function ShareButton({ title, description }: ShareButtonProps) {
                     <>
                         <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
                         <motion.div
-                            className="absolute right-0 top-10 z-20 bg-background border border-border rounded-xl shadow-lg p-1.5 min-w-[160px]"
+                            className="absolute left-0 sm:right-0 sm:left-auto top-10 z-20 bg-background border border-border rounded-xl shadow-lg p-1.5 min-w-[160px]"
                             initial={{ opacity: 0, y: -8, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: -8, scale: 0.95 }}

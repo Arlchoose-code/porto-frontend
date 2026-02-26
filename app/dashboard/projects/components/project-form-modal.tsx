@@ -64,12 +64,14 @@ export default function ProjectFormModal({ open, onClose, onSuccess, project }: 
         }
     }, [project, open]);
 
-    const handleImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImagesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
-        setImageFiles((prev) => [...prev, ...files]);
-        const previews = files.map((f) => URL.createObjectURL(f));
-        setImagePreviews((prev) => [...prev, ...previews]);
         e.target.value = "";
+        const { compressImage } = await import("@/lib/compress-image");
+        const compressed = await Promise.all(files.map((f) => compressImage(f)));
+        setImageFiles((prev) => [...prev, ...compressed]);
+        const previews = compressed.map((f) => URL.createObjectURL(f));
+        setImagePreviews((prev) => [...prev, ...previews]);
     };
 
     const removeNewImage = (index: number) => {

@@ -45,7 +45,7 @@ export default function PublicNavbar({ settings: settingsProp }: PublicNavbarPro
 
     // Pakai context kalau sudah load (real-time), fallback ke props (SSR)
     const settings = Object.keys(settingsCtx).length > 0 ? settingsCtx : settingsProp;
-    const siteName = settings.site_title || "Portfolio";
+    const siteName = settings.site_name || settings.site_title || "Portfolio";
     const logoUrl = settings.logo_url;
 
     const visibleLinks = navLinks.filter((link) => {

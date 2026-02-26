@@ -51,11 +51,13 @@ export default function BlogFormModal({ open, onClose, onSuccess, blog, tags }: 
     }
 }, [blog, open]);
 
-    const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleCoverChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            setCoverFile(file);
-            setCoverPreview(URL.createObjectURL(file));
+            const { compressImage } = await import("@/lib/compress-image");
+            const compressed = await compressImage(file);
+            setCoverFile(compressed);
+            setCoverPreview(URL.createObjectURL(compressed));
         }
     };
 

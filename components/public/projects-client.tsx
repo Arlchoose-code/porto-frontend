@@ -130,6 +130,15 @@ export default function ProjectsClient({ projects }: ProjectsClientProps) {
     const totalPages = Math.ceil(filtered.length / PROJECTS_PER_PAGE);
     const paginated = filtered.slice((page - 1) * PROJECTS_PER_PAGE, page * PROJECTS_PER_PAGE);
 
+    function getPaginationItems(current: number, total: number): (number | "...")[] {
+        if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+        if (current <= 4) return [1, 2, 3, 4, 5, "...", total];
+        if (current >= total - 3) return [1, "...", total - 4, total - 3, total - 2, total - 1, total];
+        return [1, "...", current - 1, current, current + 1, "...", total];
+    }
+
+    const paginationItems = getPaginationItems(page, totalPages);
+
     const goToPage = (p: number) => {
         setPage(p);
         setTimeout(() => sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
@@ -208,12 +217,18 @@ export default function ProjectsClient({ projects }: ProjectsClientProps) {
                             className="w-9 h-9 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
                             <ChevronLeft className="w-4 h-4" />
                         </button>
-                        {Array.from({ length: totalPages }, (_, i) => (
-                            <button key={i} onClick={() => goToPage(i + 1)}
-                                className={`w-9 h-9 rounded-full text-sm font-medium transition-colors ${page === i + 1 ? "bg-foreground text-background" : "border border-border hover:bg-muted"}`}>
-                                {i + 1}
-                            </button>
-                        ))}
+                        {paginationItems.map((item, i) =>
+                            item === "..." ? (
+                                <span key={`e-${i}`} className="w-9 h-9 flex items-center justify-center text-sm text-muted-foreground">
+                                    &hellip;
+                                </span>
+                            ) : (
+                                <button key={item} onClick={() => goToPage(item as number)}
+                                    className={`w-9 h-9 rounded-full text-sm font-medium transition-colors ${page === item ? "bg-foreground text-background" : "border border-border hover:bg-muted"}`}>
+                                    {item}
+                                </button>
+                            )
+                        )}
                         <button
                             onClick={() => goToPage(Math.min(totalPages, page + 1))}
                             disabled={page === totalPages}
