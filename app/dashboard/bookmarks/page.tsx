@@ -52,6 +52,9 @@ export default function BookmarksPage() {
     const [totalPages, setTotalPages] = useState(1);
     const [total, setTotal] = useState(0);
     const [allTopics, setAllTopics] = useState<string[]>([]);
+    const [topicSearch, setTopicSearch] = useState("");
+    const [visibleTopics, setVisibleTopics] = useState(10);
+    const TOPICS_STEP = 10;
 
     const [deleteDialog, setDeleteDialog] = useState(false);
     const [selectedBookmark, setSelectedBookmark] = useState<Bookmark | null>(null);
@@ -251,30 +254,66 @@ export default function BookmarksPage() {
             </motion.div>
 
             {/* Topic filter pills */}
-            {allTopics.length > 0 && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.10 }}
-                    className="flex flex-wrap gap-1.5">
-                    <button onClick={() => setActiveTopic("")}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all border ${
-                            activeTopic === ""
-                                ? "bg-amber-500 text-white border-amber-500"
-                                : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-amber-300 dark:hover:border-amber-700"
-                        }`}>
-                        Semua
-                    </button>
-                    {allTopics.map((topic) => (
-                        <button key={topic} onClick={() => setActiveTopic(activeTopic === topic ? "" : topic)}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all border flex items-center gap-1 ${
-                                activeTopic === topic
-                                    ? "bg-amber-500 text-white border-amber-500"
-                                    : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-amber-300 dark:hover:border-amber-700"
-                            }`}>
-                            <Tag className="w-2.5 h-2.5" />
-                            {topic}
-                        </button>
-                    ))}
-                </motion.div>
-            )}
+            {allTopics.length > 0 && (() => {
+                const filteredTopics = topicSearch.trim()
+                    ? allTopics.filter(t => t.toLowerCase().includes(topicSearch.toLowerCase()))
+                    : allTopics;
+                const displayedTopics = topicSearch.trim()
+                    ? filteredTopics
+                    : filteredTopics.slice(0, visibleTopics);
+
+                return (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.10 }}
+                        className="space-y-2">
+                        {/* Topic search */}
+                        <div className="relative">
+                            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                            <Input
+                                placeholder="Cari topik..."
+                                value={topicSearch}
+                                onChange={(e) => { setTopicSearch(e.target.value); setVisibleTopics(10); }}
+                                className="pl-9 h-8 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-xs"
+                            />
+                            {topicSearch && (
+                                <button onClick={() => { setTopicSearch(""); setVisibleTopics(10); }}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Pills */}
+                        <div className="flex flex-wrap gap-1.5">
+                            <button onClick={() => setActiveTopic("")}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all border ${
+                                    activeTopic === ""
+                                        ? "bg-amber-500 text-white border-amber-500"
+                                        : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-amber-300 dark:hover:border-amber-700"
+                                }`}>
+                                Semua
+                            </button>
+                            {displayedTopics.map((topic) => (
+                                <button key={topic} onClick={() => setActiveTopic(activeTopic === topic ? "" : topic)}
+                                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all border flex items-center gap-1 ${
+                                        activeTopic === topic
+                                            ? "bg-amber-500 text-white border-amber-500"
+                                            : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-amber-300 dark:hover:border-amber-700"
+                                    }`}>
+                                    <Tag className="w-2.5 h-2.5" />
+                                    {topic}
+                                </button>
+                            ))}
+                            {!topicSearch && filteredTopics.length > visibleTopics && (
+                                <button
+                                    onClick={() => setVisibleTopics(prev => prev + TOPICS_STEP)}
+                                    className="px-2.5 py-1 rounded-lg text-xs font-medium border border-dashed border-gray-300 dark:border-gray-700 text-gray-400 hover:border-amber-300 hover:text-amber-500 transition-all">
+                                    + {Math.min(TOPICS_STEP, filteredTopics.length - visibleTopics)} more
+                                </button>
+                            )}
+                        </div>
+                    </motion.div>
+                );
+            })()}
 
             {/* Bookmark List */}
             <AnimatePresence mode="wait">

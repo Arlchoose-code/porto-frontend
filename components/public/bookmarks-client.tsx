@@ -115,8 +115,8 @@ export default function BookmarksClient({ bookmarks: initialBookmarks, meta: ini
     const [loading, setLoading] = useState(false);
     const [searchValue, setSearchValue] = useState(initialSearch);
     const [topicSearch, setTopicSearch] = useState("");
-    const [showAllTopics, setShowAllTopics] = useState(false);
-    const TOPICS_INITIAL = 15;
+    const [visibleTopics, setVisibleTopics] = useState(15);
+    const TOPICS_STEP = 15;
 
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const sectionRef = useRef<HTMLElement>(null);
@@ -166,7 +166,6 @@ export default function BookmarksClient({ bookmarks: initialBookmarks, meta: ini
         updateUrl(newTopic);
         fetchBookmarks(1, currentSearch, newTopic);
     };
-
     const handlePage = (page: number) => {
         setCurrentPage(page);
         fetchBookmarks(page, currentSearch, currentTopic);
@@ -179,7 +178,7 @@ export default function BookmarksClient({ bookmarks: initialBookmarks, meta: ini
 
     const displayedTopics = topicSearch.trim()
         ? filteredTopics
-        : (showAllTopics ? filteredTopics : filteredTopics.slice(0, TOPICS_INITIAL));
+        : filteredTopics.slice(0, visibleTopics);
 
     const paginationItems = getPaginationItems(currentPage, displayMeta.total_pages);
 
@@ -231,7 +230,7 @@ export default function BookmarksClient({ bookmarks: initialBookmarks, meta: ini
                                     <input
                                         type="text"
                                         value={topicSearch}
-                                        onChange={e => setTopicSearch(e.target.value)}
+                                        onChange={e => { setTopicSearch(e.target.value); setVisibleTopics(15); }}
                                         placeholder="Search topics..."
                                         className="pl-7 pr-7 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-foreground/20 transition-all w-36"
                                     />
@@ -279,11 +278,11 @@ export default function BookmarksClient({ bookmarks: initialBookmarks, meta: ini
                                     <span className="text-xs text-muted-foreground py-1.5">No topics match &quot;{topicSearch}&quot;</span>
                                 )}
 
-                                {!topicSearch && filteredTopics.length > TOPICS_INITIAL && (
+                                {!topicSearch && filteredTopics.length > visibleTopics && (
                                     <button
-                                        onClick={() => setShowAllTopics(prev => !prev)}
+                                        onClick={() => setVisibleTopics(prev => prev + TOPICS_STEP)}
                                         className="inline-flex items-center gap-1.5 text-xs font-medium px-3.5 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground transition-colors">
-                                        {showAllTopics ? "− Less" : `+ More (${filteredTopics.length - TOPICS_INITIAL})`}
+                                        + More ({Math.min(TOPICS_STEP, filteredTopics.length - visibleTopics)})
                                     </button>
                                 )}
                             </div>

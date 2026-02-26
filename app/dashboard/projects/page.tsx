@@ -173,12 +173,11 @@ export default function ProjectsPage() {
             {/* Stats — semua platform, full width */}
             {!initialLoading && projects.length > 0 && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
-                    style={{ gridTemplateColumns: `repeat(${statCards.length}, minmax(0, 1fr))` }}
-                    className="grid gap-2">
+                    className="flex flex-wrap gap-2">
                     {statCards.map((stat, i) => (
                         <motion.div key={stat.label} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
                             transition={{ delay: i * 0.04 }}
-                            className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-3 text-center">
+                            className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-3 text-center min-w-[60px] flex-1">
                             <div className={`text-lg font-bold ${stat.color}`}>{stat.value}</div>
                             <div className="text-xs text-gray-500 dark:text-gray-400">{stat.label}</div>
                         </motion.div>

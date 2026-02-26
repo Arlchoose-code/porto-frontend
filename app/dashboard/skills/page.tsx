@@ -164,8 +164,7 @@ export default function SkillsPage() {
             {!initialLoading && skills.length > 0 && (
                 <motion.div
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
-                    style={{ gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))` }}
-                    className="grid gap-2"
+                    className="flex flex-wrap gap-2"
                 >
                     {stats.map((stat, i) => (
                         <motion.button
@@ -173,7 +172,7 @@ export default function SkillsPage() {
                             initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
                             transition={{ delay: i * 0.04 }}
                             onClick={() => setActiveCategory(stat.filter)}
-                            className={`bg-white dark:bg-gray-900 border rounded-xl p-3 text-center transition-all cursor-pointer hover:shadow-sm ${
+                            className={`bg-white dark:bg-gray-900 border rounded-xl p-3 text-center transition-all cursor-pointer hover:shadow-sm min-w-[60px] flex-1 ${
                                 activeCategory === stat.filter
                                     ? "border-violet-400 dark:border-violet-600 ring-1 ring-violet-400/30"
                                     : "border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
