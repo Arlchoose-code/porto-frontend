@@ -82,13 +82,9 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
                 />
 
                 {/* Blur layer — static, selalu di bottom, ga bergerak */}
-                <div className="absolute bottom-0 left-0 right-0 h-56 z-10 pointer-events-none"
-                    style={{
-                        background: "linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.45) 100%)",
-                    }}
-                />
-                <div className="absolute bottom-0 left-0 right-0 h-56 z-10 pointer-events-none backdrop-blur-sm group-hover:backdrop-blur-xl transition-all duration-300"
-                    style={{ maskImage: "linear-gradient(to bottom, transparent 0%, black 50%)", WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 50%)" }} />
+                <div className="absolute bottom-0 left-0 right-0 h-56 z-10 pointer-events-none bg-gradient-to-t from-white/45 via-white/25 to-transparent dark:from-black/80 dark:via-black/80 dark:to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 h-56 z-10 pointer-events-none backdrop-blur-sm group-hover:backdrop-blur-xl transition-all duration-300 bg-gradient-to-t from-white/20 to-transparent dark:from-black/60 dark:to-transparent"
+    style={{ maskImage: "linear-gradient(to bottom, transparent 0%, black 50%)", WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 50%)" }} />
 
                 {/* Title + desc — naik saat hover */}
                 <div className={`absolute bottom-0 left-0 right-0 px-4 pb-4 pt-12 z-10 transition-transform duration-300 ease-out ${touched ? "-translate-y-14" : "translate-y-0 group-hover:-translate-y-14"}`}>
@@ -106,15 +102,15 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
                             <span className="text-[10px] font-semibold text-muted-foreground mt-0.5 whitespace-nowrap">Platform</span>
                         </div>
                     )}
-                    {project.tech_stacks?.slice(0, 2).map((t) => (
+                    {project.tech_stacks?.slice(0, 1).map((t) => (
                         <div key={t.id} className="flex flex-col px-2 py-1.5 rounded-md bg-white/80 dark:bg-background/80 border border-black/10 min-w-0 max-w-[26%]">
                             <span className="text-xs font-bold text-foreground leading-none truncate">{t.name}</span>
                             <span className="text-[10px] font-semibold text-muted-foreground mt-0.5 whitespace-nowrap">Tech stack</span>
                         </div>
                     ))}
-                    {(project.tech_stacks?.length ?? 0) > 2 && (
+                    {(project.tech_stacks?.length ?? 0) > 1 && (
                         <div className="flex flex-col items-center px-2 py-1.5 rounded-md bg-white/80 dark:bg-background/80 border border-black/10 shrink-0">
-                            <span className="text-xs font-bold text-foreground leading-none">+{project.tech_stacks.length - 2}</span>
+                            <span className="text-xs font-bold text-foreground leading-none">+{project.tech_stacks.length - 1}</span>
                             <span className="text-[10px] font-semibold text-muted-foreground mt-0.5 whitespace-nowrap">more</span>
                         </div>
                     )}
