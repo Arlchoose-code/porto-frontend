@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import Image from "next/image";
+import { BlurImage } from "@/components/shared/blur-image";
 import Link from "next/link";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import { Search, ChevronLeft, ChevronRight, Tag as TagIcon, Bot, User, Loader2, X, Hash } from "lucide-react";
@@ -52,7 +53,7 @@ function BlogCard({ blog, index }: { blog: Blog; index: number }) {
                 {/* Cover */}
                 <div className="relative w-full bg-muted overflow-hidden" style={{ aspectRatio: "16/9" }}>
                     {blog.cover_image ? (
-                        <Image src={blog.cover_image} alt={blog.title} fill loading="lazy"
+                        <BlurImage src={blog.cover_image} alt={blog.title} fill
                             className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out" />
                     ) : (
                         <div className="absolute inset-0 flex items-center justify-center">

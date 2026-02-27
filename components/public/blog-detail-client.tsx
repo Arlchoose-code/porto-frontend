@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { BlurImage } from "@/components/shared/blur-image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowLeft, Bot, User, Calendar, Tag as TagIcon } from "lucide-react";
@@ -74,7 +75,7 @@ export default function BlogDetailClient({ blog }: BlogDetailClientProps) {
                         transition={{ duration: 0.5, delay: 0.1 }}
                         className="relative rounded-2xl overflow-hidden bg-muted mb-10"
                         style={{ aspectRatio: "16/9" }}>
-                        <Image src={blog.cover_image} alt={blog.title} fill className="object-cover" priority />
+                        <BlurImage src={blog.cover_image} alt={blog.title} fill className="object-cover" priority />
                     </motion.div>
                 )}
 

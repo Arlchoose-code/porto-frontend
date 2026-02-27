@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { BlurImage } from "@/components/shared/blur-image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ExternalLink, ArrowLeft, ChevronLeft, ChevronRight, X, Monitor, Smartphone, Globe, Terminal } from "lucide-react";
@@ -95,7 +96,7 @@ export default function ProjectDetailClient({ project }: ProjectDetailClientProp
                                 <div className="relative rounded-2xl overflow-hidden bg-muted cursor-zoom-in"
                                     style={{ aspectRatio: "16/10" }}
                                     onClick={() => setLightboxIdx(mainIdx)}>
-                                    <Image src={sortedImages[mainIdx].image_url} alt={project.title} fill
+                                    <BlurImage src={sortedImages[mainIdx].image_url} alt={project.title} fill
                                         className="object-cover" priority />
                                     {/* Counter badge */}
                                     {sortedImages.length > 1 && (
@@ -129,7 +130,7 @@ export default function ProjectDetailClient({ project }: ProjectDetailClientProp
                                         {sortedImages.map((img, i) => (
                                             <button key={img.id} onClick={() => setMainIdx(i)}
                                                 className={`relative shrink-0 w-20 h-14 rounded-lg overflow-hidden border-2 transition-all duration-200 ${mainIdx === i ? "border-foreground opacity-100" : "border-transparent opacity-50 hover:opacity-80"}`}>
-                                                <Image src={img.image_url} alt="" fill className="object-cover" />
+                                                <BlurImage src={img.image_url} alt="" fill className="object-cover" />
                                             </button>
                                         ))}
                                     </div>

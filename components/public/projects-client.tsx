@@ -2,6 +2,7 @@
 
 import { useRef, useState, useMemo } from "react";
 import Image from "next/image";
+import { BlurImage } from "@/components/shared/blur-image";
 import Link from "next/link";
 import { motion, useInView } from "framer-motion";
 import { ExternalLink, ArrowRight, Monitor, Smartphone, Globe, Terminal, Search, ChevronLeft, ChevronRight } from "lucide-react";
@@ -54,7 +55,7 @@ function ProjectRow({ project, index }: { project: Project; index: number }) {
                 <div className="relative w-full sm:w-52 sm:shrink-0 rounded-xl overflow-hidden bg-muted"
                     style={{ aspectRatio: "16/10" }}>
                     {firstImage ? (
-                        <Image src={firstImage} alt={project.title} fill loading="lazy" className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out" />
+                        <BlurImage src={firstImage} alt={project.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out" />
                     ) : (
                         <div className="absolute inset-0 flex items-center justify-center">
                             <span className="text-4xl font-black text-muted-foreground/20">{project.title[0]}</span>

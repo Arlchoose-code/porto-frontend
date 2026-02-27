@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import Image from "next/image";
+import { BlurImage } from "@/components/shared/blur-image";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import { Linkedin, MapPin, Calendar, Briefcase, GraduationCap, BookOpen, ExternalLink, ChevronLeft, ChevronRight, X, FileDown } from "lucide-react";
 import { Settings, Profile, Skill, Education, Experience, Course } from "@/lib/types";
@@ -122,23 +123,36 @@ function ImageCarousel({ images }: { images: { id: number; image_url: string; or
     return (
         <>
             <div className="relative rounded-lg overflow-hidden bg-muted mt-4" style={{ aspectRatio: "16/9" }}>
-                <Image src={sorted[idx].image_url} alt="" fill loading="lazy"
+                {/* Image layer - z-index 0 */}
+                <BlurImage src={sorted[idx].image_url} alt="" fill
                     className="object-fill cursor-zoom-in"
+                    style={{ zIndex: 0 }}
                     onClick={() => setLightbox(true)} />
                 {sorted.length > 1 && (
                     <>
-                        <button onClick={() => setIdx(i => (i - 1 + sorted.length) % sorted.length)}
-                            className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center transition-colors">
+                        {/* Nav buttons - z-index lebih tinggi dari image */}
+                        <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setIdx(i => (i - 1 + sorted.length) % sorted.length); }}
+                            className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors"
+                            style={{ zIndex: 10 }}>
                             <ChevronLeft className="w-4 h-4 text-white" />
                         </button>
-                        <button onClick={() => setIdx(i => (i + 1) % sorted.length)}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center transition-colors">
+                        <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setIdx(i => (i + 1) % sorted.length); }}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition-colors"
+                            style={{ zIndex: 10 }}>
                             <ChevronRight className="w-4 h-4 text-white" />
                         </button>
-                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                        {/* Dot indicators */}
+                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1" style={{ zIndex: 10 }}>
                             {sorted.map((_, i) => (
-                                <button key={i} onClick={() => setIdx(i)}
-                                    className={`h-1 rounded-full transition-all duration-200 ${i === idx ? "w-4 bg-white" : "w-1.5 bg-white/40"}`} />
+                                <button
+                                    type="button"
+                                    key={i}
+                                    onClick={(e) => { e.stopPropagation(); setIdx(i); }}
+                                    className={`h-1.5 rounded-full transition-all duration-200 ${i === idx ? "w-4 bg-white" : "w-1.5 bg-white/40"}`} />
                             ))}
                         </div>
                     </>
@@ -173,7 +187,7 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
                 }}
             >
                 {course.certificate_image ? (
-                    <Image src={course.certificate_image} alt={course.title} fill loading="lazy" className="object-fill" />
+                    <BlurImage src={course.certificate_image} alt={course.title} fill className="object-fill" />
                 ) : (
                     <div className="absolute inset-0 bg-muted flex items-center justify-center">
                         <BookOpen className="w-12 h-12 text-muted-foreground/20" />

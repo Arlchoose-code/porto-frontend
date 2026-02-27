@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import Image from "next/image";
+import { BlurImage } from "@/components/shared/blur-image";
 import Link from "next/link";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import { ArrowRight, ExternalLink, Mail, MapPin, BookOpen, Bookmark as BookmarkIcon } from "lucide-react";
@@ -63,7 +64,7 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
 
                 {/* Gambar full cover */}
                 {firstImage ? (
-                    <Image src={firstImage} alt={project.title} fill loading="lazy" className="object-cover" />
+                    <BlurImage src={firstImage} alt={project.title} fill className="object-cover" />
                 ) : (
                     <div className="absolute inset-0 bg-muted flex items-center justify-center">
                         <span className="text-6xl font-bold text-muted-foreground/20">{project.title.charAt(0)}</span>
@@ -286,7 +287,7 @@ export default function HomeClient({ settings: settingsProp, profile, featuredPr
                                     <Link href={`/blog/${blog.slug}`} className="group block">
                                         <div className="relative aspect-video rounded-md overflow-hidden bg-muted mb-3">
                                             {blog.cover_image ? (
-                                                <Image src={blog.cover_image} alt={blog.title} fill loading="lazy" className="object-cover transition-transform duration-500 group-hover:scale-105" />
+                                                <BlurImage src={blog.cover_image} alt={blog.title} fill className="object-cover transition-transform duration-500 group-hover:scale-105" />
                                             ) : (
                                                 <div className="absolute inset-0 flex items-center justify-center">
                                                     <BookOpen className="w-8 h-8 text-muted-foreground/20" />
