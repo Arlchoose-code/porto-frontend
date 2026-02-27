@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bot, X, RefreshCw, CheckCircle, Sparkles, AlertCircle, Wand2 } from "lucide-react";
 
@@ -8,10 +8,8 @@ interface GenerateJob {
     id: string;
     type: "generate" | "regenerate";
     keyword?: string;
-    // Single regenerate
     blogId?: number;
     blogTitle?: string;
-    // Bulk regenerate
     blogIds?: number[];
     blogTitles?: string[];
     completedIds?: number[];
@@ -23,32 +21,29 @@ interface GenerateJob {
     failed?: boolean;
 }
 
-// Single regenerate — dari reject 1 blog
+function _pushJob(job: GenerateJob) {
+    try {
+        const jobs = JSON.parse(localStorage.getItem("generate_jobs") || "[]");
+        jobs.push(job);
+        localStorage.setItem("generate_jobs", JSON.stringify(jobs));
+        window.dispatchEvent(new Event("generate_jobs_updated"));
+    } catch { }
+}
+
 export const startRegenerateJob = (blogId: number, blogTitle: string) => {
     const job: GenerateJob = {
         id: `regen_${blogId}_${Date.now()}`,
-        type: "regenerate",
-        blogId,
-        blogTitle,
-        totalTarget: 1,
-        saved: 0,
-        completedIds: [],
-        startedAt: new Date(),
-        done: false,
+        type: "regenerate", blogId, blogTitle,
+        totalTarget: 1, saved: 0, completedIds: [],
+        startedAt: new Date(), done: false,
     };
-    const jobs = JSON.parse(localStorage.getItem("generate_jobs") || "[]");
-    jobs.push(job);
-    localStorage.setItem("generate_jobs", JSON.stringify(jobs));
-    window.dispatchEvent(new Event("generate_jobs_updated"));
+    _pushJob(job);
     return job;
 };
 
-// Bulk regenerate — dari bulk reject beberapa blog AI → 1 indicator saja
 export const startBulkRegenerateJob = (blogs: { id: number; title: string }[]) => {
     if (blogs.length === 0) return null;
-    // Kalau cuma 1, pakai single
     if (blogs.length === 1) return startRegenerateJob(blogs[0].id, blogs[0].title);
-
     const job: GenerateJob = {
         id: `bulk_regen_${Date.now()}`,
         type: "regenerate",
@@ -60,10 +55,7 @@ export const startBulkRegenerateJob = (blogs: { id: number; title: string }[]) =
         startedAt: new Date(),
         done: false,
     };
-    const jobs = JSON.parse(localStorage.getItem("generate_jobs") || "[]");
-    jobs.push(job);
-    localStorage.setItem("generate_jobs", JSON.stringify(jobs));
-    window.dispatchEvent(new Event("generate_jobs_updated"));
+    _pushJob(job);
     return job;
 };
 
@@ -77,16 +69,15 @@ export const startGenerateJob = (keyword: string, total: number) => {
         startedAt: new Date(),
         done: false,
     };
-    const jobs = JSON.parse(localStorage.getItem("generate_jobs") || "[]");
-    jobs.push(job);
-    localStorage.setItem("generate_jobs", JSON.stringify(jobs));
-    window.dispatchEvent(new Event("generate_jobs_updated"));
+    _pushJob(job);
     return job;
 };
 
 export default function GenerateIndicator() {
     const [jobs, setJobs] = useState<GenerateJob[]>([]);
     const sseRef = useRef<EventSource | null>(null);
+    const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const retryCountRef = useRef(0);
     const [, setTick] = useState(0);
 
     useEffect(() => {
@@ -94,18 +85,29 @@ export default function GenerateIndicator() {
         return () => clearInterval(interval);
     }, []);
 
-    const loadJobs = () => {
+    const loadJobs = useCallback(() => {
         try {
             const stored = JSON.parse(localStorage.getItem("generate_jobs") || "[]");
-            setJobs(stored);
+            const now = Date.now();
+            // Sanitize: job stuck > 30 menit → tandai failed
+            const sanitized = stored.map((j: GenerateJob) => {
+                if (!j.done && (now - new Date(j.startedAt).getTime()) > 30 * 60 * 1000) {
+                    return { ...j, done: true, failed: true };
+                }
+                return j;
+            });
+            setJobs(sanitized);
+            if (JSON.stringify(sanitized) !== JSON.stringify(stored)) {
+                localStorage.setItem("generate_jobs", JSON.stringify(sanitized));
+            }
         } catch { setJobs([]); }
-    };
+    }, []);
 
     useEffect(() => {
         loadJobs();
         window.addEventListener("generate_jobs_updated", loadJobs);
         return () => window.removeEventListener("generate_jobs_updated", loadJobs);
-    }, []);
+    }, [loadJobs]);
 
     // Auto-dismiss done jobs setelah 8s
     useEffect(() => {
@@ -119,112 +121,124 @@ export default function GenerateIndicator() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [jobs.map(j => j.id + j.done).join(",")]);
 
-    // SSE connection
-    useEffect(() => {
-        const activeJobs = jobs.filter(j => !j.done);
-        if (activeJobs.length === 0) {
-            if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
-            return;
+    const handleSSEMessage = useCallback((data: any) => {
+        if (data.type === "generate_progress") {
+            setJobs(prev => {
+                const updated = prev.map(j =>
+                    j.type === "generate" && !j.done
+                        ? { ...j, saved: data.saved, totalTarget: data.total_target, currentTitle: data.current_title }
+                        : j
+                );
+                localStorage.setItem("generate_jobs", JSON.stringify(updated));
+                return updated;
+            });
+            if (data.status === "saved") window.dispatchEvent(new Event("blogs_refresh"));
         }
-        if (sseRef.current) return;
 
-        const token = localStorage.getItem("token");
+        if (data.type === "generate_done") {
+            setJobs(prev => {
+                const updated = prev.map(j =>
+                    j.type === "generate" && !j.done
+                        ? { ...j, done: true, saved: data.saved, totalTarget: data.total_target, failed: data.failed }
+                        : j
+                );
+                localStorage.setItem("generate_jobs", JSON.stringify(updated));
+                return updated;
+            });
+            window.dispatchEvent(new Event("blogs_refresh"));
+            window.dispatchEvent(new CustomEvent("show_toast", {
+                detail: data.failed
+                    ? { message: "Gagal generate blog", type: "error" }
+                    : { message: "Aibys selesai menulis!", description: `${data.saved} dari ${data.total_target} blog berhasil disimpan`, type: "success" }
+            }));
+        }
+
+        if (data.type === "regenerate_done") {
+            setJobs(prev => {
+                const updated = prev.map(j => {
+                    if (j.type !== "regenerate" || j.done) return j;
+                    const isBulk = Array.isArray(j.blogIds) && j.blogIds.length > 1;
+                    if (isBulk) {
+                        if (!j.blogIds!.includes(data.blog_id)) return j;
+                        const completedIds = [...(j.completedIds || [])];
+                        if (completedIds.includes(data.blog_id)) return j;
+                        completedIds.push(data.blog_id);
+                        const newSaved = data.success ? j.saved + 1 : j.saved;
+                        const allDone = completedIds.length >= j.totalTarget;
+                        window.dispatchEvent(new Event("blogs_refresh"));
+                        return { ...j, saved: newSaved, completedIds, done: allDone, failed: allDone && newSaved === 0 };
+                    } else {
+                        if (j.blogId !== data.blog_id) return j;
+                        window.dispatchEvent(new Event("blogs_refresh"));
+                        if (data.success) {
+                            window.dispatchEvent(new CustomEvent("show_toast", {
+                                detail: { message: "Aibys selesai memperbaiki blog!", type: "success" }
+                            }));
+                        }
+                        return { ...j, done: true, saved: data.success ? 1 : 0, failed: !data.success };
+                    }
+                });
+                localStorage.setItem("generate_jobs", JSON.stringify(updated));
+                return updated;
+            });
+        }
+    }, []);
+
+    const connectSSE = useCallback(() => {
+        if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
+        if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null; }
+
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        if (!token) return;
+
         const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3000";
         const sse = new EventSource(`${baseUrl}/api/blogs/stream?token=${token}`);
         sseRef.current = sse;
 
+        sse.onopen = () => { retryCountRef.current = 0; };
+
         sse.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-
-                // Progress per blog (generate)
-                if (data.type === "generate_progress") {
-                    setJobs(prev => {
-                        const updated = prev.map(j =>
-                            j.type === "generate" && !j.done
-                                ? { ...j, saved: data.saved, totalTarget: data.total_target, currentTitle: data.current_title }
-                                : j
-                        );
-                        localStorage.setItem("generate_jobs", JSON.stringify(updated));
-                        return updated;
-                    });
-                    if (data.status === "saved") window.dispatchEvent(new Event("blogs_refresh"));
-                }
-
-                // Generate semua selesai
-                if (data.type === "generate_done") {
-                    setJobs(prev => {
-                        const updated = prev.map(j =>
-                            j.type === "generate" && !j.done
-                                ? { ...j, done: true, saved: data.saved, totalTarget: data.total_target, failed: data.failed }
-                                : j
-                        );
-                        localStorage.setItem("generate_jobs", JSON.stringify(updated));
-                        return updated;
-                    });
-                    window.dispatchEvent(new Event("blogs_refresh"));
-                    window.dispatchEvent(new CustomEvent("show_toast", {
-                        detail: data.failed
-                            ? { message: "Gagal generate blog", type: "error" }
-                            : { message: "Aibys selesai menulis!", description: `${data.saved} dari ${data.total_target} blog berhasil disimpan`, type: "success" }
-                    }));
-                }
-
-                // Regenerate done — handle single & bulk dalam 1 job
-                if (data.type === "regenerate_done") {
-                    setJobs(prev => {
-                        const updated = prev.map(j => {
-                            if (j.type !== "regenerate" || j.done) return j;
-
-                            const isBulk = Array.isArray(j.blogIds) && j.blogIds.length > 1;
-
-                            if (isBulk) {
-                                // Cek apakah blog_id ini masuk ke job ini
-                                if (!j.blogIds!.includes(data.blog_id)) return j;
-
-                                const completedIds = [...(j.completedIds || [])];
-                                // Hindari double-count
-                                if (completedIds.includes(data.blog_id)) return j;
-                                completedIds.push(data.blog_id);
-
-                                const newSaved = data.success ? j.saved + 1 : j.saved;
-                                const allDone = completedIds.length >= j.totalTarget;
-
-                                // Refresh list tiap satu blog selesai
-                                window.dispatchEvent(new Event("blogs_refresh"));
-
-                                return {
-                                    ...j,
-                                    saved: newSaved,
-                                    completedIds,
-                                    done: allDone,
-                                    failed: allDone && newSaved === 0,
-                                };
-                            } else {
-                                // Single regenerate
-                                if (j.blogId !== data.blog_id) return j;
-                                window.dispatchEvent(new Event("blogs_refresh"));
-                                if (data.success) {
-                                    window.dispatchEvent(new CustomEvent("show_toast", {
-                                        detail: { message: "Aibys selesai memperbaiki blog!", type: "success" }
-                                    }));
-                                }
-                                return { ...j, done: true, saved: data.success ? 1 : 0, failed: !data.success };
-                            }
-                        });
-                        localStorage.setItem("generate_jobs", JSON.stringify(updated));
-                        return updated;
-                    });
-                }
-            } catch (e) {
-                console.error("SSE parse error:", e);
-            }
+            try { handleSSEMessage(JSON.parse(event.data)); }
+            catch (e) { console.error("SSE parse error:", e); }
         };
 
-        sse.onerror = () => { sse.close(); sseRef.current = null; };
-        return () => { sse.close(); sseRef.current = null; };
+        sse.onerror = () => {
+            sse.close();
+            sseRef.current = null;
+
+            // Exponential backoff: 2s → 4s → 8s → ... max 30s
+            const delay = Math.min(2000 * Math.pow(2, retryCountRef.current), 30000);
+            retryCountRef.current++;
+
+            const currentJobs: GenerateJob[] = JSON.parse(localStorage.getItem("generate_jobs") || "[]");
+            if (!currentJobs.some(j => !j.done)) return;
+
+            retryTimerRef.current = setTimeout(() => {
+                const activeJobs: GenerateJob[] = JSON.parse(localStorage.getItem("generate_jobs") || "[]");
+                if (activeJobs.some(j => !j.done)) connectSSE();
+            }, delay);
+        };
+    }, [handleSSEMessage]);
+
+    // Connect/disconnect SSE berdasarkan ada tidaknya active jobs
+    const hasActive = jobs.some(j => !j.done);
+    useEffect(() => {
+        if (!hasActive) {
+            if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
+            if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null; }
+            retryCountRef.current = 0;
+            return;
+        }
+        if (!sseRef.current) connectSSE();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [jobs.map(j => j.id).join(",")]);
+    }, [hasActive]);
+
+    useEffect(() => {
+        return () => {
+            if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
+            if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+        };
+    }, []);
 
     const dismiss = (id: string) => {
         setJobs(prev => {
@@ -269,25 +283,20 @@ export default function GenerateIndicator() {
                             : "Aibys sedang menulis...";
 
                     const subtitleEl = () => {
-                        if (isBulkRegen && !isDone) {
-                            return (
-                                <span className="text-blue-600 dark:text-blue-400 font-semibold font-mono">
-                                    {job.saved}/{job.totalTarget} selesai · {job.blogIds!.length} blog AI
-                                </span>
-                            );
-                        }
-                        if (isBulkRegen && isDone) {
-                            return (
-                                <span className={isFailed ? "text-red-500" : "text-emerald-600 dark:text-emerald-400"}>
-                                    {isFailed ? "Tidak ada yang berhasil" : `${job.saved}/${job.totalTarget} blog diperbaiki ✓`}
-                                </span>
-                            );
-                        }
+                        if (isBulkRegen && !isDone) return (
+                            <span className="text-blue-600 dark:text-blue-400 font-semibold font-mono">
+                                {job.saved}/{job.totalTarget} selesai · {job.blogIds!.length} blog AI
+                            </span>
+                        );
+                        if (isBulkRegen && isDone) return (
+                            <span className={isFailed ? "text-red-500" : "text-emerald-600 dark:text-emerald-400"}>
+                                {isFailed ? "Tidak ada yang berhasil" : `${job.saved}/${job.totalTarget} blog diperbaiki ✓`}
+                            </span>
+                        );
                         if (isRegenerate) {
                             const t = job.blogTitle || "";
                             return <span>{isDone ? `"${t.slice(0, 32)}..." ✓` : `"${t.slice(0, 28)}..."`}</span>;
                         }
-                        // Generate
                         if (!isDone) return (
                             <span className="text-purple-600 dark:text-purple-400 font-semibold font-mono">
                                 {job.saved}/{job.totalTarget} blog
@@ -301,34 +310,25 @@ export default function GenerateIndicator() {
                     };
 
                     return (
-                        <motion.div
-                            key={job.id}
-                            layout
+                        <motion.div key={job.id} layout
                             initial={{ opacity: 0, y: 24, scale: 0.92 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 12, scale: 0.92 }}
                             transition={{ type: "spring", bounce: 0.25, duration: 0.4 }}
                             className={`bg-white dark:bg-gray-950 border ${borderColor} rounded-2xl shadow-lg overflow-hidden`}
                         >
-                            <div className={`h-0.5 w-full ${
-                                isDone
-                                    ? isFailed ? "bg-red-500" : "bg-emerald-500"
-                                    : isRegenerate ? "bg-gradient-to-r from-blue-500 to-cyan-500" : "bg-gradient-to-r from-purple-500 to-blue-500"
-                            }`} />
-
+                            <div className={`h-0.5 w-full ${isDone ? isFailed ? "bg-red-500" : "bg-emerald-500" : isRegenerate ? "bg-gradient-to-r from-blue-500 to-cyan-500" : "bg-gradient-to-r from-purple-500 to-blue-500"}`} />
                             <div className="p-4">
                                 <div className="flex items-start gap-3">
                                     <div className="relative shrink-0 mt-0.5">
                                         <div className={`w-9 h-9 rounded-xl ${iconBg} flex items-center justify-center`}>
                                             <AnimatePresence mode="wait">
                                                 {isDone ? (
-                                                    <motion.div key="done" initial={{ scale: 0, rotate: -180 }} animate={{ scale: 1, rotate: 0 }}
-                                                        transition={{ type: "spring", bounce: 0.6 }}>
+                                                    <motion.div key="done" initial={{ scale: 0, rotate: -180 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", bounce: 0.6 }}>
                                                         {isFailed ? <AlertCircle className="w-5 h-5 text-red-500" /> : <CheckCircle className="w-5 h-5 text-emerald-500" />}
                                                     </motion.div>
                                                 ) : (
-                                                    <motion.div key="loading" animate={{ rotate: 360 }}
-                                                        transition={{ duration: 3, repeat: Infinity, ease: "linear" }}>
+                                                    <motion.div key="loading" animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }}>
                                                         {isRegenerate ? <Wand2 className="w-5 h-5 text-blue-500" /> : <Bot className="w-5 h-5 text-purple-500" />}
                                                     </motion.div>
                                                 )}
@@ -342,7 +342,6 @@ export default function GenerateIndicator() {
                                             />
                                         )}
                                     </div>
-
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="min-w-0">
@@ -355,18 +354,15 @@ export default function GenerateIndicator() {
                                                 <X className="w-3.5 h-3.5" />
                                             </motion.button>
                                         </div>
-
                                         <AnimatePresence mode="wait">
                                             {!isDone ? (
                                                 <motion.div key="progress" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mt-2.5">
                                                     <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
                                                         {isRegenerate && !isBulkRegen ? (
-                                                            // Shimmer untuk single regenerate (tidak bisa prediksi progress)
                                                             <motion.div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"
                                                                 animate={{ x: ["-100%", "100%"] }}
                                                                 transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }} />
                                                         ) : (
-                                                            // Real progress bar untuk generate & bulk regenerate
                                                             <motion.div
                                                                 className={`h-full rounded-full ${isRegenerate ? "bg-gradient-to-r from-blue-500 to-cyan-400" : "bg-gradient-to-r from-purple-500 to-blue-500"}`}
                                                                 initial={{ width: "5%" }}
@@ -375,17 +371,13 @@ export default function GenerateIndicator() {
                                                             />
                                                         )}
                                                     </div>
-                                                    {job.currentTitle && (
-                                                        <p className="text-xs text-gray-400 mt-1 truncate">✍️ {job.currentTitle}</p>
-                                                    )}
+                                                    {job.currentTitle && <p className="text-xs text-gray-400 mt-1 truncate">✍️ {job.currentTitle}</p>}
                                                     <div className="flex items-center justify-between mt-1">
                                                         <span className="text-xs text-gray-400 flex items-center gap-1">
                                                             <RefreshCw className="w-3 h-3 animate-spin" />
                                                             {getElapsed(job.startedAt)}
                                                         </span>
-                                                        {(isBulkRegen || !isRegenerate) && (
-                                                            <span className="text-xs text-gray-400">{progress}%</span>
-                                                        )}
+                                                        {(isBulkRegen || !isRegenerate) && <span className="text-xs text-gray-400">{progress}%</span>}
                                                     </div>
                                                 </motion.div>
                                             ) : (
