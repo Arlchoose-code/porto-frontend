@@ -64,10 +64,35 @@ function buildMonthlyData(items: any[], monthCount = 6) {
 }
 
 function buildSkillLevelData(skills: any[]) {
-    const order = ["Beginner", "Intermediate", "Advanced", "Expert"];
+    // Sesuaikan dengan format level yang ada di data (lowercase)
+    const order = ["beginner", "intermediate", "advanced", "expert"];
+    const displayNames = {
+        beginner: "Beginner",
+        intermediate: "Intermediate", 
+        advanced: "Advanced",
+        expert: "Expert"
+    };
+    
     const map: Record<string, number> = {};
-    skills.forEach(s => { map[s.level] = (map[s.level] || 0) + 1; });
-    return order.filter(l => map[l]).map(l => ({ name: l, value: map[l] }));
+    
+    // Inisialisasi semua level dengan 0
+    order.forEach(level => { map[level] = 0; });
+    
+    // Hitung skills berdasarkan level (case insensitive)
+    skills.forEach(s => { 
+        const level = s.level?.toLowerCase(); // pastikan lowercase
+        if (level && map[level] !== undefined) {
+            map[level]++; 
+        }
+    });
+    
+    // Konversi ke format untuk chart dengan display names
+    return order
+        .filter(level => map[level] > 0) // hanya tampilkan yang ada datanya
+        .map(level => ({ 
+            name: displayNames[level as keyof typeof displayNames], 
+            value: map[level] 
+        }));
 }
 
 function buildPlatformData(projects: any[]) {
@@ -559,11 +584,19 @@ export default function DashboardPage() {
                                             <XAxis type="number" tick={{ fontSize: 10, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} />
                                             <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#9ca3af" }} axisLine={false} tickLine={false} width={80} />
                                             <Tooltip content={<CustomTooltip />} />
-                                            <Bar dataKey="value" name="Skills" radius={[0, 4, 4, 0]}>
-                                                {skillLevelData.map((entry) => (
-                                                    <Cell key={entry.name} fill={SKILL_LEVEL_COLORS[entry.name] || "#94a3b8"} />
-                                                ))}
-                                            </Bar>
+                                          <Bar dataKey="value" name="Skills" radius={[0, 4, 4, 0]}>
+    {skillLevelData.map((entry) => {
+        // Mapping manual aja based on entry.name
+        let color = "#94a3b8"; // default gray
+        
+        if (entry.name === "Beginner") color = "#94a3b8";
+        else if (entry.name === "Intermediate") color = "#3b82f6";
+        else if (entry.name === "Advanced") color = "#8b5cf6";
+        else if (entry.name === "Expert") color = "#f59e0b";
+        
+        return <Cell key={entry.name} fill={color} />;
+    })}
+</Bar>
                                         </BarChart>
                                     </ResponsiveContainer>
                                 )
