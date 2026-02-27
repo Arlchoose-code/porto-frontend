@@ -38,6 +38,7 @@ export default function SkillFormModal({ open, onClose, onSuccess, skill }: Prop
     const [iconFile, setIconFile] = useState<File | null>(null);
     const [iconPreview, setIconPreview] = useState("");
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const prevObjectUrlRef = useRef<string | null>(null);
 
     useEffect(() => {
         if (open) {
@@ -57,13 +58,22 @@ export default function SkillFormModal({ open, onClose, onSuccess, skill }: Prop
         }
     }, [skill, open]);
 
+    useEffect(() => {
+        return () => {
+            if (prevObjectUrlRef.current) URL.revokeObjectURL(prevObjectUrlRef.current);
+        };
+    }, []);
+
     const handleIconChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            if (prevObjectUrlRef.current) URL.revokeObjectURL(prevObjectUrlRef.current);
             const { compressImage } = await import("@/lib/compress-image");
             const compressed = await compressImage(file);
+            const url = URL.createObjectURL(compressed);
+            prevObjectUrlRef.current = url;
             setIconFile(compressed);
-            setIconPreview(URL.createObjectURL(compressed));
+            setIconPreview(url);
         }
         e.target.value = "";
     };

@@ -28,6 +28,12 @@ export default function ProfilePage() {
 
     const avatarInputRef = useRef<HTMLInputElement>(null);
     const resumeInputRef = useRef<HTMLInputElement>(null);
+    const prevAvatarUrlRef = useRef<string | null>(null);
+
+    // Cleanup object URL on unmount
+    useEffect(() => {
+        return () => { if (prevAvatarUrlRef.current) URL.revokeObjectURL(prevAvatarUrlRef.current); };
+    }, []);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -51,10 +57,13 @@ export default function ProfilePage() {
         const file = e.target.files?.[0];
         if (!file) return;
         e.target.value = "";
+        if (prevAvatarUrlRef.current) URL.revokeObjectURL(prevAvatarUrlRef.current);
         const { compressImage } = await import("@/lib/compress-image");
         const compressed = await compressImage(file);
+        const url = URL.createObjectURL(compressed);
+        prevAvatarUrlRef.current = url;
         setAvatarFile(compressed);
-        setAvatarPreview(URL.createObjectURL(compressed));
+        setAvatarPreview(url);
     };
 
     const handleResumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { Metadata } from "next";
 import { Bookmark } from "@/lib/types";
 import BookmarksClient from "@/components/public/bookmarks-client";
@@ -8,7 +9,22 @@ interface BookmarksPageProps {
     searchParams: Promise<{ search?: string; topic?: string }>;
 }
 
-async function getData(search: string, topic: string) {
+// Topics adalah data statis (jarang berubah) — cache lebih lama
+const getTopics = cache(async (): Promise<string[]> => {
+    try {
+        const base = process.env.API_URL;
+        const res = await fetch(`${base}/bookmarks?page=1&limit=200`, { next: { revalidate: 3600 } });
+        if (!res.ok) return [];
+        const allBookmarks: Bookmark[] = (await res.json()).data || [];
+        const topicSet = new Set<string>();
+        allBookmarks.forEach(b => b.topics?.forEach(t => topicSet.add(t.name)));
+        return Array.from(topicSet).sort();
+    } catch {
+        return [];
+    }
+});
+
+async function getBookmarks(search: string, topic: string) {
     const base = process.env.API_URL;
     const params = new URLSearchParams({
         page: "1",
@@ -16,24 +32,12 @@ async function getData(search: string, topic: string) {
         ...(search && { search }),
         ...(topic && { topic }),
     });
-
-    // Fetch bookmarks + all topics in parallel
-    const [bookmarksRes, topicsRes] = await Promise.all([
-        fetch(`${base}/bookmarks?${params}`, { next: { revalidate: 60 } }),
-        fetch(`${base}/bookmarks?page=1&limit=200`, { next: { revalidate: 3600 } }),
-    ]);
-
-    const bookmarksJson = bookmarksRes.ok ? await bookmarksRes.json() : { data: [], meta: { total_pages: 1, total: 0 } };
-    const bookmarks: Bookmark[] = bookmarksJson.data || [];
-    const meta = bookmarksJson.meta || { total_pages: 1, total: 0 };
-
-    // Extract unique topics from all bookmarks
-    const allBookmarks: Bookmark[] = topicsRes.ok ? ((await topicsRes.json()).data || []) : [];
-    const topicSet = new Set<string>();
-    allBookmarks.forEach(b => b.topics?.forEach(t => topicSet.add(t.name)));
-    const topics = Array.from(topicSet).sort();
-
-    return { bookmarks, meta, topics };
+    const res = await fetch(`${base}/bookmarks?${params}`, { next: { revalidate: 60 } });
+    const json = res.ok ? await res.json() : { data: [], meta: { total_pages: 1, total: 0 } };
+    return {
+        bookmarks: (json.data || []) as Bookmark[],
+        meta: json.meta || { total_pages: 1, total: 0 },
+    };
 }
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -45,7 +49,10 @@ export default async function BookmarksPage({ searchParams }: BookmarksPageProps
     const search = sp.search || "";
     const topic = sp.topic || "";
 
-    const { bookmarks, meta, topics } = await getData(search, topic);
+    const [{ bookmarks, meta }, topics] = await Promise.all([
+        getBookmarks(search, topic),
+        getTopics(),
+    ]);
 
     return (
         <BookmarksClient

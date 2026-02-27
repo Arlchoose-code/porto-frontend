@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import api from "@/lib/api";
 import { Blog, Tag } from "@/lib/types";
+import { useDebounce } from "@/lib/use-debounce";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -73,6 +74,10 @@ export default function BlogsPage() {
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [bulkLoading, setBulkLoading] = useState(false);
 
+    // Debounce search — fetch hanya setelah user berhenti mengetik 400ms
+    const debouncedSearch = useDebounce(search, 400);
+    const abortRef = useRef<AbortController | null>(null);
+
     const fetchStats = useCallback(async () => {
         try {
             const res = await api.get("/blogs/stats");
@@ -81,28 +86,36 @@ export default function BlogsPage() {
     }, []);
 
     const fetchBlogs = useCallback(async (silent = false) => {
+        // Cancel request sebelumnya jika masih berjalan (race condition fix)
+        if (abortRef.current) abortRef.current.abort();
+        abortRef.current = new AbortController();
+
         if (silent) setRefreshing(true);
         else setInitialLoading(true);
         try {
             const params = new URLSearchParams({
                 page: page.toString(),
                 limit: "10",
-                ...(search && { search }),
+                ...(debouncedSearch && { search: debouncedSearch }),
                 ...(status !== "all" && { status }),
             });
-            const res = await api.get(`/blogs/all?${params}`);
+            const res = await api.get(`/blogs/all?${params}`, { signal: abortRef.current.signal });
             setBlogs(res.data.data || []);
             setTotalPages(res.data.meta?.total_pages || 1);
-        } catch {
-            toast.error("Gagal memuat blogs");
+        } catch (e: any) {
+            if (e?.code !== "ERR_CANCELED") toast.error("Gagal memuat blogs");
         } finally {
             setInitialLoading(false);
             setRefreshing(false);
         }
-    }, [page, status, search]);
+    }, [page, status, debouncedSearch]);
 
     useEffect(() => { fetchBlogs(); }, [fetchBlogs]);
     useEffect(() => { fetchStats(); }, [fetchStats]);
+
+    // Reset page saat search/status berubah
+    useEffect(() => { setPage(1); }, [debouncedSearch, status]);
+
     useEffect(() => {
     const fetchAllTags = async () => {
         try {
@@ -143,7 +156,7 @@ export default function BlogsPage() {
         return () => window.removeEventListener("show_toast", handleToast);
     }, []);
 
-    useEffect(() => { setSelectedIds(new Set()); }, [status, search, page]);
+    useEffect(() => { setSelectedIds(new Set()); }, [status, debouncedSearch, page]);
 
     const handlePublish = async (blog: Blog) => {
         try {
@@ -320,7 +333,7 @@ export default function BlogsPage() {
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                     <Input placeholder="Cari judul, deskripsi..." value={search}
-                        onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                        onChange={(e) => setSearch(e.target.value)}
                         className="pl-9 h-9 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-sm" />
                 </div>
                 <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>

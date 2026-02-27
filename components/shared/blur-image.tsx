@@ -140,6 +140,7 @@ export function BlurImage({
             width={!fill ? width : undefined}
             height={!fill ? height : undefined}
             priority={priority}
+            loading={priority ? "eager" : undefined}
             className={`transition-opacity duration-500 ${isLoaded ? "opacity-100" : "opacity-0"} ${className}`}
             onLoad={() => setIsLoaded(true)}
             {...props}

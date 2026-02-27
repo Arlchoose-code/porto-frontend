@@ -52,8 +52,9 @@ export default function ExperienceFormModal({ open, onClose, onSuccess, experien
                 setForm({ company: "", role: "", location: "", start_date: "", end_date: "", description: "", is_current: false });
                 setExistingImages([]);
             }
+            // Revoke semua object URLs lama sebelum reset
+            setImagePreviews(prev => { prev.forEach(url => URL.revokeObjectURL(url)); return []; });
             setImageFiles([]);
-            setImagePreviews([]);
         }
     }, [experience, open]);
 
@@ -67,8 +68,12 @@ export default function ExperienceFormModal({ open, onClose, onSuccess, experien
     };
 
     const removeNewImage = (i: number) => {
+        // Revoke URL sebelum dihapus dari state
+        setImagePreviews((prev) => {
+            URL.revokeObjectURL(prev[i]);
+            return prev.filter((_, idx) => idx !== i);
+        });
         setImageFiles((prev) => prev.filter((_, idx) => idx !== i));
-        setImagePreviews((prev) => prev.filter((_, idx) => idx !== i));
     };
 
     const handleDeleteExistingImage = async (imageId: number) => {

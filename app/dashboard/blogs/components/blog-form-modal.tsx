@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import api from "@/lib/api";
 import { Blog, Tag } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
@@ -28,6 +28,7 @@ export default function BlogFormModal({ open, onClose, onSuccess, blog, tags }: 
     const [coverFile, setCoverFile] = useState<File | null>(null);
     const [coverPreview, setCoverPreview] = useState<string>("");
     const [tagSearch, setTagSearch] = useState("");
+    const prevObjectUrlRef = useRef<string | null>(null);
 
     useEffect(() => {
     if (open) {
@@ -37,7 +38,6 @@ export default function BlogFormModal({ open, onClose, onSuccess, blog, tags }: 
                 description: blog.description || "",
                 content: blog.content || "",
             });
-            // Fix: pastikan tags ter-load dengan benar
             const tagIds = blog.tags?.map((t) => t.id) || [];
             setSelectedTags(tagIds);
             setCoverPreview(blog.cover_image || "");
@@ -51,13 +51,27 @@ export default function BlogFormModal({ open, onClose, onSuccess, blog, tags }: 
     }
 }, [blog, open]);
 
+    // Cleanup object URL on unmount atau saat preview berubah
+    useEffect(() => {
+        return () => {
+            if (prevObjectUrlRef.current) {
+                URL.revokeObjectURL(prevObjectUrlRef.current);
+                prevObjectUrlRef.current = null;
+            }
+        };
+    }, []);
+
     const handleCoverChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            // Revoke URL lama sebelum buat yang baru
+            if (prevObjectUrlRef.current) URL.revokeObjectURL(prevObjectUrlRef.current);
             const { compressImage } = await import("@/lib/compress-image");
             const compressed = await compressImage(file);
+            const url = URL.createObjectURL(compressed);
+            prevObjectUrlRef.current = url;
             setCoverFile(compressed);
-            setCoverPreview(URL.createObjectURL(compressed));
+            setCoverPreview(url);
         }
     };
 

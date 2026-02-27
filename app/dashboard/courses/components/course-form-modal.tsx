@@ -32,6 +32,11 @@ export default function CourseFormModal({ open, onClose, onSuccess, course }: Pr
     const [certFile, setCertFile] = useState<File | null>(null);
     const [certPreview, setCertPreview] = useState("");
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const prevObjectUrlRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        return () => { if (prevObjectUrlRef.current) URL.revokeObjectURL(prevObjectUrlRef.current); };
+    }, []);
 
     useEffect(() => {
         if (open) {
@@ -56,10 +61,13 @@ export default function CourseFormModal({ open, onClose, onSuccess, course }: Pr
     const handleCertChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            if (prevObjectUrlRef.current) URL.revokeObjectURL(prevObjectUrlRef.current);
             const { compressImage } = await import("@/lib/compress-image");
             const compressed = await compressImage(file);
+            const url = URL.createObjectURL(compressed);
+            prevObjectUrlRef.current = url;
             setCertFile(compressed);
-            setCertPreview(URL.createObjectURL(compressed));
+            setCertPreview(url);
         }
         e.target.value = "";
     };

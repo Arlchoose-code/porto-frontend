@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import api from "@/lib/api";
 import { Contact } from "@/lib/types";
+import { useDebounce } from "@/lib/use-debounce";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -75,49 +76,50 @@ export default function ContactsPage() {
     const [deleting, setDeleting] = useState(false);
     const [updatingId, setUpdatingId] = useState<number | null>(null);
 
+    // Debounce search (client-side filter, tapi tetap debounce biar tidak lag)
+    const debouncedSearch = useDebounce(search, 300);
+    const abortRef = useRef<AbortController | null>(null);
+
+    // FIX: 4 API calls → 1 API call, hitung dari data yang sudah ada
     const fetchStats = useCallback(async () => {
         try {
-            const [all, pending, read, done] = await Promise.all([
-                api.get("/contacts"),
-                api.get("/contacts", { params: { status: "pending" } }),
-                api.get("/contacts", { params: { status: "read" } }),
-                api.get("/contacts", { params: { status: "done" } }),
-            ]);
+            const res = await api.get("/contacts");
+            const all: Contact[] = res.data.data || [];
             setStats({
-                total: all.data.data?.length || 0,
-                pending: pending.data.data?.length || 0,
-                read: read.data.data?.length || 0,
-                done: done.data.data?.length || 0,
+                total: all.length,
+                pending: all.filter(c => !c.status || c.status === "pending").length,
+                read: all.filter(c => c.status === "read").length,
+                done: all.filter(c => c.status === "done").length,
             });
         } catch { /* silent */ }
     }, []);
 
     const fetchContacts = useCallback(async (silent = false) => {
+        if (abortRef.current) abortRef.current.abort();
+        abortRef.current = new AbortController();
+
         if (silent) setRefreshing(true);
         else setInitialLoading(true);
         try {
             const params: Record<string, string> = {};
             if (activeStatus !== "all") params.status = activeStatus;
-            const res = await api.get("/contacts", { params });
+            const res = await api.get("/contacts", { params, signal: abortRef.current.signal });
             setContacts(res.data.data || []);
-        } catch {
-            toast.error("Gagal memuat contacts");
+        } catch (e: any) {
+            if (e?.code !== "ERR_CANCELED") toast.error("Gagal memuat contacts");
         } finally {
             setInitialLoading(false);
             setRefreshing(false);
         }
     }, [activeStatus]);
 
-    useEffect(() => { fetchContacts(false); }, []);
-    useEffect(() => {
-        if (!initialLoading) fetchContacts(true);
-    }, [activeStatus]);
+    useEffect(() => { fetchContacts(false); }, [fetchContacts]);
     useEffect(() => { fetchStats(); }, [fetchStats]);
 
-    // Client-side search filter
+    // Client-side search filter pakai debounced value
     const filtered = contacts.filter((c) => {
-        if (!search.trim()) return true;
-        const q = search.toLowerCase();
+        if (!debouncedSearch.trim()) return true;
+        const q = debouncedSearch.toLowerCase();
         return (
             c.name?.toLowerCase().includes(q) ||
             c.email?.toLowerCase().includes(q) ||

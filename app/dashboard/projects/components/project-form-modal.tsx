@@ -58,8 +58,8 @@ export default function ProjectFormModal({ open, onClose, onSuccess, project }: 
                 setTechStacks([]);
                 setExistingImages([]);
             }
+            setImagePreviews(prev => { prev.forEach(url => URL.revokeObjectURL(url)); return []; });
             setImageFiles([]);
-            setImagePreviews([]);
             setTechInput("");
         }
     }, [project, open]);
@@ -75,8 +75,11 @@ export default function ProjectFormModal({ open, onClose, onSuccess, project }: 
     };
 
     const removeNewImage = (index: number) => {
+        setImagePreviews((prev) => {
+            URL.revokeObjectURL(prev[index]);
+            return prev.filter((_, i) => i !== index);
+        });
         setImageFiles((prev) => prev.filter((_, i) => i !== index));
-        setImagePreviews((prev) => prev.filter((_, i) => i !== index));
     };
 
     const handleDeleteExistingImage = async (imageId: number) => {

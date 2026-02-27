@@ -32,6 +32,11 @@ export default function EducationFormModal({ open, onClose, onSuccess, education
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [logoPreview, setLogoPreview] = useState("");
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const prevObjectUrlRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        return () => { if (prevObjectUrlRef.current) URL.revokeObjectURL(prevObjectUrlRef.current); };
+    }, []);
 
     useEffect(() => {
         if (open) {
@@ -56,10 +61,13 @@ export default function EducationFormModal({ open, onClose, onSuccess, education
     const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            if (prevObjectUrlRef.current) URL.revokeObjectURL(prevObjectUrlRef.current);
             const { compressImage } = await import("@/lib/compress-image");
             const compressed = await compressImage(file);
+            const url = URL.createObjectURL(compressed);
+            prevObjectUrlRef.current = url;
             setLogoFile(compressed);
-            setLogoPreview(URL.createObjectURL(compressed));
+            setLogoPreview(url);
         }
         e.target.value = "";
     };

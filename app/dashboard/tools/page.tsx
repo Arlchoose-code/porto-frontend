@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import api from "@/lib/api";
 import { Tool } from "@/lib/types";
+import { useDebounce } from "@/lib/use-debounce";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -63,6 +64,10 @@ export default function ToolsPage() {
     const [total, setTotal] = useState(0);
     const [filterActive, setFilterActive] = useState<string>("all");
 
+    // Debounce search
+    const debouncedSearch = useDebounce(search, 400);
+    const abortRef = useRef<AbortController | null>(null);
+
     // Registry — di-fetch dari API, bukan hardcoded!
     const [registryItems, setRegistryItems] = useState<Array<{ slug: string; name: string }>>([]);
     const [registryLoading, setRegistryLoading] = useState(true);
@@ -99,16 +104,19 @@ export default function ToolsPage() {
     }, []);
 
     const fetchTools = useCallback(async (isPageChange = false) => {
+        if (abortRef.current) abortRef.current.abort();
+        abortRef.current = new AbortController();
+
         if (isPageChange) setRefreshing(true);
         else setInitialLoading(true);
         try {
-            const res = await api.get("/tools/all");
+            const res = await api.get("/tools/all", { signal: abortRef.current.signal });
             const all: Tool[] = res.data.data || [];
 
             // Filter client-side
             let filtered = all;
-            if (search) {
-                const q = search.toLowerCase();
+            if (debouncedSearch) {
+                const q = debouncedSearch.toLowerCase();
                 filtered = filtered.filter(t =>
                     t.name.toLowerCase().includes(q) ||
                     t.slug.toLowerCase().includes(q) ||
@@ -128,20 +136,20 @@ export default function ToolsPage() {
             setTools(sliced);
             setTotal(tot);
             setTotalPages(tp);
-        } catch {
-            toast.error("Gagal memuat tools");
+        } catch (e: any) {
+            if (e?.code !== "ERR_CANCELED") toast.error("Gagal memuat tools");
         } finally {
             setInitialLoading(false);
             setRefreshing(false);
         }
-    }, [page, search, filterActive]);
+    }, [page, debouncedSearch, filterActive]);
 
     useEffect(() => {
         fetchRegistry();
         fetchTools(false);
     }, []);
     useEffect(() => { if (!initialLoading) fetchTools(true); }, [page]);
-    useEffect(() => { if (!initialLoading) { setPage(1); fetchTools(true); } }, [search, filterActive]);
+    useEffect(() => { if (!initialLoading) { setPage(1); fetchTools(true); } }, [debouncedSearch, filterActive]);
 
     // ── Form helpers ──
     const openCreate = () => {
@@ -174,15 +182,20 @@ export default function ToolsPage() {
         setFormErrors({});
     };
 
+    const prevIconUrlRef = useRef<string | null>(null);
+
     const handleIconChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        if (prevIconUrlRef.current) URL.revokeObjectURL(prevIconUrlRef.current);
         const { compressImage } = await import("@/lib/compress-image");
         const compressed = await compressImage(file);
+        const url = URL.createObjectURL(compressed);
+        prevIconUrlRef.current = url;
         setForm(prev => ({
             ...prev,
             icon: compressed,
-            iconPreview: URL.createObjectURL(compressed),
+            iconPreview: url,
         }));
     };
 

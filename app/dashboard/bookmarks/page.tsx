@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import api from "@/lib/api";
 import { Bookmark } from "@/lib/types";
+import { useDebounce } from "@/lib/use-debounce";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +49,10 @@ export default function BookmarksPage() {
     const [refreshing, setRefreshing] = useState(false);
     const [search, setSearch] = useState("");
     const [activeTopic, setActiveTopic] = useState("");
+
+    // Debounce search
+    const debouncedSearch = useDebounce(search, 400);
+    const abortRef = useRef<AbortController | null>(null);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [total, setTotal] = useState(0);
@@ -86,29 +91,29 @@ export default function BookmarksPage() {
     }, []);
 
     const fetchBookmarks = useCallback(async (isPageChange = false) => {
+        if (abortRef.current) abortRef.current.abort();
+        abortRef.current = new AbortController();
+
         if (isPageChange) setRefreshing(true);
         else setInitialLoading(true);
         try {
             const params: Record<string, string | number> = { page, limit: 10 };
-            if (search) params.search = search;
+            if (debouncedSearch) params.search = debouncedSearch;
             if (activeTopic) params.topic = activeTopic;
-            const res = await api.get("/bookmarks", { params });
+            const res = await api.get("/bookmarks", { params, signal: abortRef.current.signal });
             setBookmarks(res.data.data || []);
             setTotalPages(res.data.meta?.total_pages || 1);
             setTotal(res.data.meta?.total || 0);
-        } catch {
-            toast.error("Gagal memuat bookmarks");
+        } catch (e: any) {
+            if (e?.code !== "ERR_CANCELED") toast.error("Gagal memuat bookmarks");
         } finally {
             setInitialLoading(false);
             setRefreshing(false);
         }
-    }, [page, search, activeTopic]);
+    }, [page, debouncedSearch, activeTopic]);
 
-    useEffect(() => { fetchBookmarks(false); }, []);
-    useEffect(() => { if (!initialLoading) fetchBookmarks(true); }, [page]);
-    useEffect(() => {
-        if (!initialLoading) { setPage(1); fetchBookmarks(true); }
-    }, [search, activeTopic]);
+    useEffect(() => { fetchBookmarks(false); }, [fetchBookmarks]);
+    useEffect(() => { setPage(1); }, [debouncedSearch, activeTopic]);
     useEffect(() => { fetchAllTopics(); }, [fetchAllTopics]);
 
     const openCreate = () => {

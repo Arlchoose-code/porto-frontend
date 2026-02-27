@@ -1,32 +1,32 @@
+import { cache } from "react";
 import PublicNavbar from "@/components/shared/public-navbar";
 import PublicFooter from "@/components/shared/public-footer";
 import { Settings, Profile } from "@/lib/types";
 
-async function getSettings(): Promise<Settings> {
+// cache() = deduplicate fetch dalam 1 request
+const getSettings = cache(async (): Promise<Settings> => {
     try {
         const res = await fetch(`${process.env.API_URL}/settings`, {
-            next: { revalidate: 60 },
+            next: { revalidate: 3600 },
         });
         if (!res.ok) return {};
-        const json = await res.json();
-        return json.data || {};
+        return (await res.json()).data || {};
     } catch {
         return {};
     }
-}
+});
 
-async function getProfile(): Promise<Profile | null> {
+const getProfile = cache(async (): Promise<Profile | null> => {
     try {
         const res = await fetch(`${process.env.API_URL}/profile`, {
-            next: { revalidate: 60 },
+            next: { revalidate: 3600 },
         });
         if (!res.ok) return null;
-        const json = await res.json();
-        return json.data || null;
+        return (await res.json()).data || null;
     } catch {
         return null;
     }
-}
+});
 
 export default async function PublicLayout({
     children,

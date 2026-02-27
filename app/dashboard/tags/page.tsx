@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import api from "@/lib/api";
+import { useDebounce } from "@/lib/use-debounce";
 import { Tag } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -43,8 +44,8 @@ export default function TagsPage() {
 
     // Add modal
     const [addModal, setAddModal] = useState(false);
-    const [addInput, setAddInput] = useState("");       // input field saat ini
-    const [pendingTags, setPendingTags] = useState<string[]>([]); // list tags yg belum disimpan
+    const [addInput, setAddInput] = useState("");
+    const [pendingTags, setPendingTags] = useState<string[]>([]);
     const [adding, setAdding] = useState(false);
 
     // Inline edit
@@ -62,39 +63,38 @@ export default function TagsPage() {
     const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
     const [deleting, setDeleting] = useState(false);
 
+    // Debounce search
+    const debouncedSearch = useDebounce(search, 400);
+    const abortRef = useRef<AbortController | null>(null);
+
     const fetchTags = useCallback(async (isPageChange = false) => {
+        if (abortRef.current) abortRef.current.abort();
+        abortRef.current = new AbortController();
+
         if (isPageChange) setRefreshing(true);
         else setInitialLoading(true);
         try {
             const params: Record<string, string | number> = { page, limit: 20 };
-            if (search) params.search = search;
-            const res = await api.get("/tags", { params });
+            if (debouncedSearch) params.search = debouncedSearch;
+            const res = await api.get("/tags", { params, signal: abortRef.current.signal });
             setTags(res.data.data || []);
             setTotalPages(res.data.meta?.total_pages || 1);
             setTotal(res.data.meta?.total || 0);
-        } catch {
-            toast.error("Gagal memuat tags");
+        } catch (e: any) {
+            if (e?.code !== "ERR_CANCELED") toast.error("Gagal memuat tags");
         } finally {
             setInitialLoading(false);
             setRefreshing(false);
         }
-    }, [page, search]);
+    }, [page, debouncedSearch]);
 
-    // Mount pertama
-    useEffect(() => { fetchTags(false); }, []);
+    useEffect(() => { fetchTags(false); }, [fetchTags]);
 
-    // Ganti page → spinner kecil
-    useEffect(() => {
-        if (!initialLoading) fetchTags(true);
-    }, [page]);
-
-    // Ganti search → reset page + spinner
-    useEffect(() => {
-        if (!initialLoading) { setPage(1); fetchTags(true); }
-    }, [search]);
+    // Reset page saat search berubah
+    useEffect(() => { setPage(1); }, [debouncedSearch]);
 
     // Reset selected saat ganti page/search
-    useEffect(() => { setSelectedIds(new Set()); }, [page, search]);
+    useEffect(() => { setSelectedIds(new Set()); }, [page, debouncedSearch]);
 
     // ── Add modal handlers ──
     const addToPending = () => {
