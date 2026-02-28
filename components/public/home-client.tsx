@@ -204,7 +204,7 @@ export default function HomeClient({ settings: settingsProp, profile, featuredPr
                                 {profile?.name || settings.site_title || "Portfolio"}
                             </h1>
                             {profile?.tagline && <p className="mt-3 text-lg text-muted-foreground leading-relaxed">{profile.tagline}</p>}
-                            {settings.site_description && <p className="mt-2 text-base text-muted-foreground/70 leading-relaxed">{settings.site_description}</p>}
+                            {settings.home_description && <p className="mt-2 text-base text-muted-foreground/70 leading-relaxed">{settings.home_description}</p>}
                         </motion.div>
                         <motion.div className="flex items-center gap-3 flex-wrap" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}>
                             <Link href="/contact" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-foreground text-background text-sm font-medium hover:opacity-80 transition-opacity">

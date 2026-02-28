@@ -178,10 +178,20 @@ export default function SettingsPage() {
                                 value={settings.site_language || ""} onChange={(e) => set("site_language", e.target.value)} />
                         </div>
                         <div className="sm:col-span-2 space-y-1.5">
-                            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Site Description</Label>
-                            <Textarea placeholder="Deskripsi singkat website kamu..." rows={2}
+                            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                Site Description <span className="text-gray-400">(untuk SEO & OG meta tag)</span>
+                            </Label>
+                            <Textarea placeholder="Deskripsi singkat untuk mesin pencari dan social preview..." rows={2}
                                 className="text-sm bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 resize-none"
                                 value={settings.site_description || ""} onChange={(e) => set("site_description", e.target.value)} />
+                        </div>
+                        <div className="sm:col-span-2 space-y-1.5">
+                            <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                Home Description <span className="text-gray-400">(tampil di halaman utama)</span>
+                            </Label>
+                            <Textarea placeholder="Deskripsi yang tampil di hero section halaman home..." rows={2}
+                                className="text-sm bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 resize-none"
+                                value={settings.home_description || ""} onChange={(e) => set("home_description", e.target.value)} />
                         </div>
                         <div className="sm:col-span-2 space-y-1.5">
                             <Label className="text-xs font-medium text-gray-500 dark:text-gray-400">Keywords</Label>

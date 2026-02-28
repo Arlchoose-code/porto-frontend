@@ -22,6 +22,7 @@ export interface Settings {
     site_title?: string;
     site_name?: string;
     site_description?: string;
+    home_description?: string;
     site_keywords?: string;
     site_author?: string;
     site_url?: string;

@@ -65,6 +65,65 @@ function formatIssuedAt(dateStr: string | null | undefined) {
     return new Date(dateStr).toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
+// CourseLightbox — lightbox khusus course dengan info di bawah gambar
+function CourseLightbox({ course, onClose }: { course: Course; onClose: () => void }) {
+    useEffect(() => {
+        const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+        window.addEventListener("keydown", h);
+        return () => window.removeEventListener("keydown", h);
+    }, [onClose]);
+
+    return (
+        <motion.div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 p-4"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={onClose}>
+            <button className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center z-10" onClick={onClose}>
+                <X className="w-5 h-5 text-white" />
+            </button>
+
+            {/* Gambar */}
+            {course.certificate_image && (
+                <motion.img
+                    src={course.certificate_image} alt={course.title}
+                    className="max-w-[90vw] max-h-[60vh] object-contain rounded-lg"
+                    initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.2 }}
+                    onClick={e => e.stopPropagation()}
+                />
+            )}
+
+            {/* Info di bawah gambar */}
+            <motion.div
+                className="mt-4 max-w-md w-full text-center"
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: 0.1 }}
+                onClick={e => e.stopPropagation()}
+            >
+                <h3 className="text-white font-bold text-base leading-snug">{course.title}</h3>
+                {course.issuer && <p className="text-white/60 text-sm mt-0.5">{course.issuer}</p>}
+                {course.description && (
+                    <p className="text-white/70 text-sm mt-2 leading-relaxed">{course.description}</p>
+                )}
+                <div className="flex items-center justify-center gap-3 mt-3 flex-wrap">
+                    {course.issued_at && (
+                        <span className="text-xs text-white/50">Issued: {formatIssuedAt(course.issued_at)}</span>
+                    )}
+                    {course.expired_at && (
+                        <span className="text-xs text-white/50">Expires: {formatIssuedAt(course.expired_at)}</span>
+                    )}
+                    {course.credential_url && (
+                        <a href={course.credential_url} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs text-white/70 hover:text-white transition-colors underline underline-offset-2"
+                            onClick={e => e.stopPropagation()}>
+                            <ExternalLink className="w-3 h-3" /> Lihat Credential
+                        </a>
+                    )}
+                </div>
+            </motion.div>
+        </motion.div>
+    );
+}
+
 // Lightbox
 function Lightbox({ images, startIdx, onClose }: { images: { image_url: string }[]; startIdx: number; onClose: () => void }) {
     const [idx, setIdx] = useState(startIdx);
@@ -163,7 +222,6 @@ function ImageCarousel({ images }: { images: { id: number; image_url: string; or
     );
 }
 
-// Course card like featured project
 function CourseCard({ course, index }: { course: Course; index: number }) {
     const ref = useRef(null);
     const inView = useInView(ref, { once: true, margin: "-40px" });
@@ -207,7 +265,7 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
                     {course.issuer && <p className="text-xs text-white/80 mt-0.5 drop-shadow-md">{course.issuer}</p>}
                 </div>
 
-                {/* Hover: issued + credential + view cert */}
+                {/* Hover: issued + credential + view */}
                 <div className={`absolute bottom-0 left-0 right-0 px-4 py-3 flex items-center gap-2 flex-wrap transition-transform duration-300 z-10 ${touched ? "translate-y-0" : "translate-y-full group-hover:translate-y-0"}`}>
                     {course.issued_at && (
                         <div className="flex flex-col px-2.5 py-1.5 rounded-md bg-white/80 dark:bg-background/80 border border-black/10">
@@ -223,19 +281,19 @@ function CourseCard({ course, index }: { course: Course; index: number }) {
                             <span className="text-[9px] text-muted-foreground mt-0.5">Credential</span>
                         </a>
                     )}
-                    {course.certificate_image && (
-                        <button
-                            className="relative z-20 flex flex-col items-center px-2.5 py-1.5 rounded-md bg-white/80 dark:bg-background/80 border border-black/10 hover:bg-white transition-colors"
-                            onClick={e => { e.stopPropagation(); setLightbox(true); }}>
-                            <BookOpen className="w-3.5 h-3.5 text-foreground" />
-                            <span className="text-[9px] text-muted-foreground mt-0.5">View</span>
-                        </button>
-                    )}
+                    <button
+                        className="relative z-20 flex flex-col items-center px-2.5 py-1.5 rounded-md bg-white/80 dark:bg-background/80 border border-black/10 hover:bg-white transition-colors"
+                        onClick={e => { e.stopPropagation(); setLightbox(true); }}>
+                        <BookOpen className="w-3.5 h-3.5 text-foreground" />
+                        <span className="text-[9px] text-muted-foreground mt-0.5">View</span>
+                    </button>
                 </div>
             </div>
-            {lightbox && course.certificate_image && (
-                <Lightbox images={[{ image_url: course.certificate_image }]} startIdx={0} onClose={() => setLightbox(false)} />
-            )}
+            <AnimatePresence>
+                {lightbox && (
+                    <CourseLightbox course={course} onClose={() => setLightbox(false)} />
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 }

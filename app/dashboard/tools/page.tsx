@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
-    Search, Trash2, Loader2, Plus, Wrench,
+    Search, Trash2, Loader2, Plus, Wrench, RefreshCw,
     Pencil, X, ChevronLeft, ChevronRight,
     ToggleLeft, ToggleRight, ImageIcon, Hash,
     AlignLeft, Tag, ArrowUpDown, Eye, EyeOff
@@ -58,6 +58,7 @@ export default function ToolsPage() {
     const [tools, setTools] = useState<Tool[]>([]);
     const [initialLoading, setInitialLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [syncing, setSyncing] = useState(false);
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -152,6 +153,28 @@ export default function ToolsPage() {
     useEffect(() => { if (!initialLoading) { setPage(1); fetchTools(true); } }, [debouncedSearch, filterActive]);
 
     // ── Form helpers ──
+    const handleSync = async () => {
+        setSyncing(true);
+        try {
+            const res = await api.post("/tools/sync");
+            const { added, skipped } = res.data.data;
+            if (added.length > 0) {
+                toast.success(`Sync selesai! ${added.length} tool baru ditambahkan`, {
+                    description: added.join(", "),
+                });
+                fetchTools();
+            } else {
+                toast.info("Semua tool registry sudah ada di database", {
+                    description: `${skipped.length} tool di-skip`,
+                });
+            }
+        } catch {
+            toast.error("Gagal sync tools");
+        } finally {
+            setSyncing(false);
+        }
+    };
+
     const openCreate = () => {
         setEditingTool(null);
         setForm(emptyForm());
@@ -309,6 +332,13 @@ export default function ToolsPage() {
                             <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">tool</span>
                         </div>
                     )}
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
+                        <Button onClick={handleSync} disabled={syncing} size="sm" variant="outline"
+                            className="gap-1.5 border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-900/20">
+                            {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                            <span className="text-sm">Sync Registry</span>
+                        </Button>
+                    </motion.div>
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
                         <Button onClick={openCreate} size="sm"
                             className="gap-1.5 bg-teal-600 hover:bg-teal-700 text-white">
